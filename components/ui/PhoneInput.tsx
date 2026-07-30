@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, Phone, ChevronDown, Check } from 'lucide-react';
 
 interface PhoneInputProps {
+  id?: string;
   label: string;
   value: string;
   onChange: (fullE164Number: string) => void;
@@ -68,6 +69,7 @@ export const COUNTRY_CODES = [
 ];
 
 export const PhoneInput: React.FC<PhoneInputProps> = ({
+  id,
   label,
   value,
   onChange,
@@ -168,6 +170,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
 
         {/* 10-Digit Mobile Number Input Box */}
         <input
+          id={id}
           type="text"
           value={nationalNumber}
           onChange={handleNumberChange}
