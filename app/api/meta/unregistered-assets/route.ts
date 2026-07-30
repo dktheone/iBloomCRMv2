@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { fetchMetaWabaAssets } from '@/lib/meta/graph-client';
+import { evaluatePhoneLineEligibility } from '@/lib/meta/eligibility-rulebook';
+
+export async function GET() {
+  try {
+    const supabaseAdmin = createAdminClient();
+
+    // 1. Fetch enrolled WABAs and Phone Lines from Supabase DB
+    const { data: dbWabas } = await supabaseAdmin.from('wabas').select('waba_id');
+    const { data: dbPhones } = await supabaseAdmin.from('wa_phone_numbers').select('phone_number_id');
+
+    const enrolledWabaIds = new Set((dbWabas || []).map((w) => w.waba_id));
+    const enrolledPhoneIds = new Set((dbPhones || []).map((p) => p.phone_number_id));
+
+    // 2. Fetch live assets from Meta Graph API
+    const liveMetaAssets = await fetchMetaWabaAssets();
+
+    if (!liveMetaAssets.success) {
+      return NextResponse.json({
+        success: false,
+        error: liveMetaAssets.error || 'Failed to fetch live Meta assets.',
+        unregisteredWabas: [],
+        unregisteredPhones: [],
+      });
+    }
+
+    // 3. Filter out assets already enrolled in DB
+    const unregisteredWabas = liveMetaAssets.wabas.filter((w) => !enrolledWabaIds.has(w.waba_id));
+
+    const unregisteredPhones = liveMetaAssets.phoneNumbers
+      .filter((p) => !enrolledPhoneIds.has(p.id))
+      .map((p) => {
+        const eligibility = evaluatePhoneLineEligibility({
+          phone_number_id: p.id,
+          waba_id: p.waba_id,
+          display_phone_number: p.display_phone_number,
+          verified_name: p.verified_name,
+          quality_rating: p.quality_rating,
+          code_verification_status: p.code_verification_status,
+          messaging_limit_tier: p.messaging_limit_tier,
+          name_status: p.name_status,
+          is_test_number: p.is_test_number,
+        });
+
+        return {
+          ...p,
+          eligibility,
+        };
+      });
+
+    return NextResponse.json({
+      success: true,
+      unregisteredWabaCount: unregisteredWabas.length,
+      unregisteredPhoneCount: unregisteredPhones.length,
+      unregisteredWabas,
+      unregisteredPhones,
+      totalLiveWabas: liveMetaAssets.wabas.length,
+      totalLivePhones: liveMetaAssets.phoneNumbers.length,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: err?.message || 'Error checking unregistered assets' },
+      { status: 500 }
+    );
+  }
+}

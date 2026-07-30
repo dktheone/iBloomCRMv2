@@ -1,0 +1,65 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files (never commit these!)
+.env*.local
+.env
+.env.development
+.env.test
+.env.production
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# --- USER DEFINED IGNORES (Documentation & Useless Files) ---
+/blueprint/
+/ai-research/
+/stitch_ibloom_crm_v2_design_system/
+/stitch_ibloom_crm_v2_design_system.zip
+/crm-screens/
+/marketing-plan/
+/misc-archives/
+
+# Text & Markdown Documentation
+/001-kickoff-prompts.md
+/CLAUDE-Old.md
+/CLAUDE.md
+/GUIDEBOOK.md
+/blueprint_summary.md
+/design.md
+/project_analysis.md
+/resume-claude.txt
+/automation-flow.txt
+/mcp-app.txt
+/user-prep.txt
+/supabase-sql-data.txt
+
+# Misc JSON configs not needed for app runtime
+/wapi_automation_flow_kit.json
