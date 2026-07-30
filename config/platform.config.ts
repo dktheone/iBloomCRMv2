@@ -28,4 +28,5 @@ export const PLATFORM_CONFIG = {
   superAdminId: process.env.NEXT_PUBLIC_SUPER_ADMIN_ID || '11111111-1111-1111-1111-111111111111',
   superAdminEmail: process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'crm@ibloomsolutions.com',
   superAdminName: process.env.NEXT_PUBLIC_SUPER_ADMIN_NAME || 'Master Super Admin',
+  superAdminPassword: process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD || 'ChangeMe123!',
 };
