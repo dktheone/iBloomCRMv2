@@ -19,7 +19,7 @@ export async function GET() {
 
     return NextResponse.json({
       isInitialized,
-      masterAgency: isInitialized ? tenantData[0] : null,
+      masterAgency: tenantData?.[0] || null,
     });
   } catch (err: any) {
     return NextResponse.json({ isInitialized: false, error: err?.message });
