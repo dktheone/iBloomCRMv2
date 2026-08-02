@@ -64,3 +64,4 @@ next-env.d.ts
 
 # Misc JSON configs not needed for app runtime
 /wapi_automation_flow_kit.json
+/data/
