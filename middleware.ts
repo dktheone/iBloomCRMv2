@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 
     const { data: tenantData } = await supabaseAdmin
       .from('tenants')
-      .select('id, is_master_agency')
+      .select('is_master_agency')
       .eq('is_master_agency', true)
       .limit(1);
 

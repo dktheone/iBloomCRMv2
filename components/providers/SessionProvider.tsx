@@ -54,14 +54,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const { data: userData } = await supabase
           .from('users')
           .select('*')
-          .eq('id', user.id)
+          .eq('user_uid', user.id)
           .maybeSingle();
 
         const full_name = userData?.full_name || user.user_metadata?.full_name || PLATFORM_CONFIG.superAdminName;
         const phone = user.user_metadata?.phone || userData?.phone || '+91 98765 43210';
 
         setUserProfile({
-          id: user.id,
+          id: userData?.user_uid || userData?.id || user.id,
           email: user.email || PLATFORM_CONFIG.superAdminEmail,
           full_name,
           phone,
@@ -74,16 +74,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           .from('tenants')
           .select('*')
           .eq('is_master_agency', true)
-          .maybeSingle();
+          .limit(1);
 
-        if (tenantData) {
+        if (tenantData && tenantData.length > 0) {
+          const t = tenantData[0];
           setTenantProfile({
-            id: tenantData.id,
-            name: tenantData.name || PLATFORM_CONFIG.masterAgencyName,
-            slug: tenantData.slug || 'master-agency',
-            mask_id: tenantData.mask_id || 'IBL-MA-001',
-            is_master_agency: true,
-            status: tenantData.lifecycle_status || 'active',
+            id: t.tenant_uid || t.id,
+            name: t.name || PLATFORM_CONFIG.masterAgencyName,
+            slug: t.slug || 'master-agency',
+            mask_id: t.mask_id || 'IBL-MA-001',
+            is_master_agency: t.is_master_agency,
+            status: t.status || 'active',
           });
         } else {
           setTenantProfile({

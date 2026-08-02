@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { saveTemplateSchema } from '@/lib/validations/schemas';
 import { logValidationFailure } from '@/lib/security/audit-logger';
+import { recordAuditEvent } from '@/lib/security/audit-engine';
 
 export async function POST(request: Request) {
   try {
@@ -64,6 +65,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
+    // Record Audit Event in Option-1 Log Engine
+    await recordAuditEvent({
+      tenantId,
+      eventType: 'TEMPLATE_SAVE',
+      targetId: name,
+      details: { waba_id, language, category, status },
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent'),
+    });
+
     return NextResponse.json({
       success: true,
       message: `Template ${name} saved to Master Templates Group!`,
@@ -84,16 +95,31 @@ export async function DELETE(request: Request) {
     }
 
     const supabaseAdmin = createAdminClient();
-    const { error } = await supabaseAdmin
+
+    // SOFT DELETE: Update status = 'DELETED' (NO HARD DELETE!)
+    const { data, error } = await supabaseAdmin
       .from('wa_templates')
-      .delete()
-      .eq('id', templateId);
+      .update({
+        status: 'DELETED',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', templateId)
+      .select();
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Template removed from saved group.' });
+    // Record Audit Event in Option-1 Log Engine
+    await recordAuditEvent({
+      eventType: 'TEMPLATE_DELETE',
+      targetId: templateId,
+      details: { action: 'SOFT_DELETE', new_status: 'DELETED' },
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent'),
+    });
+
+    return NextResponse.json({ success: true, message: 'Template soft-deleted from active group.', template: data });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err?.message }, { status: 500 });
   }

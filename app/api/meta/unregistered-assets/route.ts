@@ -8,11 +8,11 @@ export async function GET() {
     const supabaseAdmin = createAdminClient();
 
     // 1. Fetch enrolled WABAs and Phone Lines from Supabase DB
-    const { data: dbWabas } = await supabaseAdmin.from('wabas').select('waba_id');
-    const { data: dbPhones } = await supabaseAdmin.from('wa_phone_numbers').select('phone_number_id');
+    const { data: dbWabas } = await supabaseAdmin.from('wabas').select('meta_waba_id, waba_uid');
+    const { data: dbPhones } = await supabaseAdmin.from('wa_phone_numbers').select('meta_phone_number_id, phone_line_uid');
 
-    const enrolledWabaIds = new Set((dbWabas || []).map((w) => w.waba_id));
-    const enrolledPhoneIds = new Set((dbPhones || []).map((p) => p.phone_number_id));
+    const enrolledWabaIds = new Set((dbWabas || []).map((w: any) => w.meta_waba_id || w.waba_id || w.waba_uid));
+    const enrolledPhoneIds = new Set((dbPhones || []).map((p: any) => p.meta_phone_number_id || p.phone_number_id || p.phone_line_uid));
 
     // 2. Fetch live assets from Meta Graph API
     const liveMetaAssets = await fetchMetaWabaAssets();

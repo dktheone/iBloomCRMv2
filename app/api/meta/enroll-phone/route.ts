@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { enrollPhoneSchema } from '@/lib/validations/schemas';
 import { logValidationFailure } from '@/lib/security/audit-logger';
+import { upsertPhoneAssetToDb, upsertWabaAssetToDb } from '@/lib/meta/graph-client';
+import { recordAuditEvent } from '@/lib/security/audit-engine';
 
 export async function POST(request: Request) {
   try {
@@ -46,6 +48,11 @@ export async function POST(request: Request) {
       messaging_limit_tier,
       name_status,
       is_test_number,
+      waba_name,
+      waba_currency,
+      waba_timezone_id,
+      waba_message_template_namespace,
+      waba_account_review_status,
     } = validationResult.data;
 
     const targetPhoneMetaId = phone_number_id || id;
@@ -53,6 +60,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'waba_id and phone_number_id are required' }, { status: 400 });
     }
 
+    // 4 Explicit Lifecycle Actions: PROVISION | LOCK_AND_ACTIVATE | RE_ACTIVATE | DETACH
+    const action = body.action || 'LOCK_AND_ACTIVATE';
     const supabaseAdmin = createAdminClient();
 
     // 2. Query or Ensure Tenant Zero ID (is_master_agency = true)
@@ -62,51 +71,80 @@ export async function POST(request: Request) {
       .eq('is_master_agency', true)
       .limit(1);
 
-    let tenantId = tenantData && tenantData.length > 0 ? tenantData[0].id : PLATFORM_CONFIG.tenantZeroId;
+    const tenantId = tenantData && tenantData.length > 0 ? tenantData[0].id : PLATFORM_CONFIG.tenantZeroId;
 
-    // Ensure Tenant Zero exists in `tenants` table to satisfy foreign key constraint
-    const { error: tenantErr } = await supabaseAdmin.from('tenants').upsert({
-      id: tenantId,
-      name: PLATFORM_CONFIG.masterAgencyName,
-      slug: PLATFORM_CONFIG.masterAgencySlug,
-      mask_id: 'TENANT-ZERO',
-      status: 'active',
-      is_master_agency: true,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    // Handle DETACH action with SOFT DELETE (No Hard Deletes!)
+    if (action === 'DETACH') {
+      const { data: updatedPhone, error: updateErr } = await supabaseAdmin
+        .from('wa_phone_numbers')
+        .update({
+          lifecycle_status: 'UNLOCKED_STANDBY',
+          is_locked: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('phone_number_id', targetPhoneMetaId)
+        .select()
+        .single();
 
-    if (tenantErr) {
-      console.warn('[Enroll Phone Tenant Upsert Warning]:', tenantErr.message);
+      if (updateErr) {
+        return NextResponse.json({ success: false, error: updateErr.message }, { status: 500 });
+      }
+
+      // Record Audit Event in Option-1 Log Engine
+      await recordAuditEvent({
+        tenantId,
+        eventType: 'ASSET_DETACH',
+        targetId: targetPhoneMetaId,
+        details: {
+          display_phone_number: display_phone_number || targetPhoneMetaId,
+          verified_name: verified_name || 'iBloom WhatsApp Line',
+          previous_status: updatedPhone?.lifecycle_status,
+          new_status: 'UNLOCKED_STANDBY',
+        },
+        ipAddress: request.headers.get('x-forwarded-for'),
+        userAgent: request.headers.get('user-agent'),
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Line ${display_phone_number || targetPhoneMetaId} soft-detached and transitioned to UNLOCKED_STANDBY in DB.`,
+        enrolledLine: updatedPhone,
+      });
     }
 
-    // 3. Upsert Parent WABA into public.wabas to resolve its UUID `id`
-    const { data: wabaRow, error: wabaUpsertErr } = await supabaseAdmin
-      .from('wabas')
-      .upsert({
-        tenant_id: tenantId,
-        waba_id: waba_id,
-        name: `WABA ${waba_id}`,
-        currency: 'INR',
-        timezone: 'UTC',
-        account_review_status: 'APPROVED',
-        message_template_namespace: 'ibloom_template_ns',
-        business_id: PLATFORM_CONFIG.metaBusinessPortfolioId,
-        business_verification_status: 'VERIFIED',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'waba_id' })
-      .select('id, waba_id')
-      .single();
+    let targetLifecycleStatus = 'LIVE_OPERATIONAL';
+    let auditEventType = 'ASSET_LOCK';
 
-    if (wabaUpsertErr || !wabaRow) {
-      console.error('[Enroll Phone WABA Upsert Error]:', wabaUpsertErr?.message);
-      return NextResponse.json({ success: false, error: wabaUpsertErr?.message || 'Failed to resolve parent WABA UUID.' }, { status: 500 });
+    if (action === 'PROVISION') {
+      targetLifecycleStatus = 'PROVISIONED';
+      auditEventType = 'ASSET_PROVISION';
+    } else if (action === 'LOCK_AND_ACTIVATE') {
+      targetLifecycleStatus = 'LIVE_OPERATIONAL';
+      auditEventType = 'ASSET_LOCK';
+    } else if (action === 'RE_ACTIVATE') {
+      targetLifecycleStatus = 'LIVE_OPERATIONAL';
+      auditEventType = 'ASSET_RE_ACTIVATED';
     }
 
-    // 4. Enroll phone line into public.wa_phone_numbers passing UUID wabaRow.id
-    const { data, error } = await supabaseAdmin.from('wa_phone_numbers').upsert({
-      tenant_id: tenantId,
-      waba_id: wabaRow.id, // <--- Passes UUID wabaRow.id to satisfy foreign key constraint!
+    // 3. Upsert Parent WABA into public.wabas via standardized helper preserving exact Meta metadata
+    const wabaRow = await upsertWabaAssetToDb({
+      waba_id,
+      name: waba_name || body.waba_name || `WABA ${waba_id}`,
+      currency: waba_currency || body.waba_currency || 'INR',
+      timezone_id: waba_timezone_id || body.waba_timezone_id || '71',
+      account_review_status: waba_account_review_status || body.waba_account_review_status || 'APPROVED',
+      message_template_namespace: waba_message_template_namespace || body.waba_message_template_namespace || 'ibloom_template_ns',
+    }, tenantId);
+
+    if (!wabaRow) {
+      return NextResponse.json({ success: false, error: 'Failed to resolve parent WABA record in DB.' }, { status: 500 });
+    }
+
+    // 4. Enroll phone line using Lifecycle helper
+    const enrolledResult = await upsertPhoneAssetToDb({
+      id: targetPhoneMetaId,
       phone_number_id: targetPhoneMetaId,
+      waba_id: wabaRow.id, // UUID
       display_phone_number: display_phone_number || targetPhoneMetaId,
       verified_name: verified_name || 'iBloom WhatsApp Line',
       quality_rating: quality_rating || 'GREEN',
@@ -114,18 +152,32 @@ export async function POST(request: Request) {
       messaging_limit_tier: messaging_limit_tier || 'TIER_1K',
       name_status: name_status || 'APPROVED',
       is_test_number: Boolean(is_test_number),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'phone_number_id' }).select();
+      target_lifecycle_status: targetLifecycleStatus as any,
+    }, tenantId);
 
-    if (error) {
-      console.error('[Enroll Phone Upsert Error]:', error.message);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    if (!enrolledResult) {
+      return NextResponse.json({ success: false, error: 'Failed to save phone line asset into database.' }, { status: 500 });
     }
+
+    // Record Audit Event in Option-1 Log Engine
+    await recordAuditEvent({
+      tenantId,
+      eventType: auditEventType,
+      targetId: targetPhoneMetaId,
+      details: {
+        display_phone_number: display_phone_number || targetPhoneMetaId,
+        verified_name: verified_name || 'iBloom WhatsApp Line',
+        lifecycle_status: targetLifecycleStatus,
+        waba_id,
+      },
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent'),
+    });
 
     return NextResponse.json({
       success: true,
-      message: `Phone line ${display_phone_number || targetPhoneMetaId} explicitly enrolled into Master Agency!`,
-      enrolledLine: data ? data[0] : null,
+      message: `Phone line ${display_phone_number || targetPhoneMetaId} transitioned to ${targetLifecycleStatus}!`,
+      enrolledLine: enrolledResult,
     });
   } catch (err: any) {
     console.error('[Enroll Phone Exception]:', err);
@@ -143,16 +195,32 @@ export async function DELETE(request: Request) {
     }
 
     const supabaseAdmin = createAdminClient();
-    const { error } = await supabaseAdmin
+    
+    // SOFT DELETE: Update lifecycle_status = 'UNLOCKED_STANDBY', is_locked = false (NO HARD DELETE!)
+    const { data: updatedLine, error } = await supabaseAdmin
       .from('wa_phone_numbers')
-      .delete()
-      .eq('phone_number_id', phoneNumberId);
+      .update({
+        lifecycle_status: 'UNLOCKED_STANDBY',
+        is_locked: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('phone_number_id', phoneNumberId)
+      .select();
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: `Phone line ${phoneNumberId} unenrolled.` });
+    // Record Audit Event in Option-1 Log Engine
+    await recordAuditEvent({
+      eventType: 'ASSET_DETACH',
+      targetId: phoneNumberId,
+      details: { action: 'DELETE_REQUEST', new_status: 'UNLOCKED_STANDBY' },
+      ipAddress: request.headers.get('x-forwarded-for'),
+      userAgent: request.headers.get('user-agent'),
+    });
+
+    return NextResponse.json({ success: true, message: `Phone line ${phoneNumberId} soft-detached.`, line: updatedLine });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err?.message }, { status: 500 });
   }

@@ -9,7 +9,7 @@ export default async function RootPage() {
   // 1. Check if Master Agency is initialized in Supabase
   const { data: tenantData } = await supabaseAdmin
     .from('tenants')
-    .select('id, is_master_agency')
+    .select('is_master_agency')
     .eq('is_master_agency', true)
     .limit(1);
 

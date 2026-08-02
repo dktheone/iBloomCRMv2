@@ -1,6 +1,6 @@
 -- ====================================================================
 -- iBloomCRM v2 — Complete Master Clean Reset & Schema Script
--- File: supabase-clean-reset.sql
+-- File: 20260802_complete_clean_reset.sql
 -- Purpose: Completely drops all existing tables/triggers/policies and 
 --          recreates the full multi-tenant schema with standardized _uid 
 --          columns, auth.users integration, and non-recursive RLS policies.

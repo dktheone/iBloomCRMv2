@@ -11,7 +11,7 @@ export async function GET() {
     // Check if Master Agency already exists in Supabase
     const { data: tenantData } = await supabaseAdmin
       .from('tenants')
-      .select('id, name, is_master_agency, status, slug')
+      .select('tenant_uid, id, name, is_master_agency, status, slug')
       .eq('is_master_agency', true)
       .limit(1);
 
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     // Check if Master Agency already exists
     const { data: existingTenants } = await supabaseAdmin
       .from('tenants')
-      .select('id, slug')
+      .select('tenant_uid, id, slug')
       .eq('is_master_agency', true)
       .limit(1);
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     let tenantSlug = PLATFORM_CONFIG.masterAgencySlug;
 
     if (existingTenants && existingTenants.length > 0) {
-      tenantZeroId = existingTenants[0].id;
+      tenantZeroId = existingTenants[0].tenant_uid || existingTenants[0].id;
       tenantSlug = existingTenants[0].slug || PLATFORM_CONFIG.masterAgencySlug;
     }
 
@@ -108,37 +108,43 @@ export async function POST(request: Request) {
     }
 
     // Provision/Update Master Agency in public.tenants
-    const { error: tenantErr } = await supabaseAdmin.from('tenants').upsert({
-      id: tenantZeroId,
+    const tenantRecord = {
+      tenant_uid: tenantZeroId,
       name: masterAgencyName,
       slug: tenantSlug,
       mask_id: 'TENANT-ZERO',
       status: 'active',
       is_master_agency: true,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    };
+
+    const { error: tenantErr } = await supabaseAdmin.from('tenants').upsert(tenantRecord);
 
     if (tenantErr) {
       return NextResponse.json({ success: false, error: tenantErr.message }, { status: 500 });
     }
 
     // Provision Super Admin profile in public.users
-    await supabaseAdmin.from('users').upsert({
-      id: finalUserId,
+    const userRecord = {
+      user_uid: finalUserId,
       email: superAdminEmail,
       full_name: superAdminName,
       role: 'super_admin',
       mfa_enabled: true,
       updated_at: new Date().toISOString(),
-    });
+    };
+
+    await supabaseAdmin.from('users').upsert(userRecord);
 
     // Provision User Tenant Link in public.user_tenants
-    await supabaseAdmin.from('user_tenants').upsert({
-      user_id: finalUserId,
-      tenant_id: tenantZeroId,
+    const linkRecord = {
+      user_uid: finalUserId,
+      tenant_uid: tenantZeroId,
       role: 'owner',
       is_default: true,
-    }, { onConflict: 'user_id,tenant_id' });
+    };
+
+    await supabaseAdmin.from('user_tenants').upsert(linkRecord);
 
     // Provision Provider Config
     await supabaseAdmin.from('provider_config').upsert({

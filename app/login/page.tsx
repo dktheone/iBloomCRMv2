@@ -132,8 +132,8 @@ export default function LoginPage() {
     try {
       const { data: userTenants } = await supabase
         .from('user_tenants')
-        .select('tenant_id, role, tenants(name, slug)')
-        .eq('user_id', userId)
+        .select('tenant_uid, user_uid, role, tenants(name, slug)')
+        .or(`user_uid.eq.${userId},user_id.eq.${userId}`)
         .limit(1);
 
       if (userTenants && userTenants.length > 0) {

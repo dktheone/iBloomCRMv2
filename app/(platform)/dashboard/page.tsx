@@ -131,9 +131,9 @@ export default function DashboardPage() {
   async function loadDashboardMetrics() {
     try {
       const { data: providerData } = await supabase.from('provider_config').select('*').limit(1);
-      const { data: wabaData } = await supabase.from('wabas').select('id');
-      const { data: phoneData } = await supabase.from('wa_phone_numbers').select('id, is_test_number');
-      const { data: tmplData } = await supabase.from('wa_templates').select('id');
+      const { data: wabaData } = await supabase.from('wabas').select('waba_uid, meta_waba_id');
+      const { data: phoneData } = await supabase.from('wa_phone_numbers').select('phone_line_uid, meta_phone_number_id, is_test_number');
+      const { data: tmplData } = await supabase.from('wa_templates').select('template_uid, meta_template_id');
 
       const isConfigured = Boolean(providerData && providerData.length > 0);
       const config = isConfigured && providerData ? providerData[0] : null;

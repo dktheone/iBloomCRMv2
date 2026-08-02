@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchMetaWabaAssets, upsertWabaAssetToDb, upsertPhoneAssetToDb } from '@/lib/meta/graph-client';
+import { fetchMetaWabaAssets } from '@/lib/meta/graph-client';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { getOrSetCache } from '@/lib/redis/client';
 
+/**
+ * GET /api/meta/sync-assets
+ * DISCOVERY ONLY: Fetches live WABAs and Phone Lines from Meta Graph API v25.0 via Redis Cache.
+ * CRITICAL RULE: DOES NOT AUTO-INSERT OR AUTO-UPSERT PHONE LINES INTO DATABASE WITHOUT EXPLICIT USER ACTION.
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -23,29 +28,6 @@ export async function GET(request: NextRequest) {
         errorCode200Detected: assetResult.errorCode200Detected || false,
         requestDetails: assetResult.requestDetails,
       }, { status: 500 });
-    }
-
-    const tenantId = PLATFORM_CONFIG.tenantZeroId;
-
-    if (!assetResult.isDemoFallback) {
-      const wabaMetaToUuidMap = new Map<string, string>();
-
-      // Upsert discovered WABAs using standardized helper
-      for (const waba of assetResult.wabas) {
-        const wabaRow = await upsertWabaAssetToDb(waba, tenantId);
-        if (wabaRow) {
-          wabaMetaToUuidMap.set(waba.waba_id, wabaRow.id);
-        }
-      }
-
-      // Upsert discovered Phone Numbers using standardized helper with UUID resolution
-      for (const phone of assetResult.phoneNumbers) {
-        const parentWabaUuid = wabaMetaToUuidMap.get(phone.waba_id) || phone.waba_id;
-        await upsertPhoneAssetToDb({
-          ...phone,
-          waba_id: parentWabaUuid,
-        }, tenantId);
-      }
     }
 
     return NextResponse.json({

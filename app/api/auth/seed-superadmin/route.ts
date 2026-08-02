@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const supabaseAdmin = createAdminClient();
 
     // 1. Fetch user by email via Admin API
-    const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
     if (listError || !usersData?.users) {
       return NextResponse.json({
@@ -21,9 +21,8 @@ export async function GET(request: Request) {
       }, { status: 500 });
     }
 
-    const existingUser = usersData.users.find(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
-
-    let authUserId = PLATFORM_CONFIG.superAdminId;
+    let existingUser = usersData.users.find(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
+    let authUserId = existingUser?.id || PLATFORM_CONFIG.superAdminId;
 
     if (existingUser) {
       authUserId = existingUser.id;
@@ -35,7 +34,7 @@ export async function GET(request: Request) {
       });
 
       if (updateError) {
-        return NextResponse.json({ status: 'UPDATE_FAILED', message: updateError.message }, { status: 500 });
+        return NextResponse.json({ status: 'UPDATE_FAILED', message: updateError.message || String(updateError) }, { status: 500 });
       }
     } else {
       // Create user cleanly via Admin API
@@ -47,39 +46,55 @@ export async function GET(request: Request) {
       });
 
       if (createError) {
-        return NextResponse.json({ status: 'CREATE_FAILED', message: createError.message }, { status: 500 });
-      }
-
-      if (createData?.user) {
+        // Fallback: If creation failed due to user existing, list again and force update password
+        const { data: reListData } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const reMatch = reListData?.users?.find(u => u.email?.toLowerCase() === targetEmail.toLowerCase());
+        if (reMatch) {
+          authUserId = reMatch.id;
+          const { error: matchUpdateErr } = await supabaseAdmin.auth.admin.updateUserById(reMatch.id, {
+            password: passParam,
+            email_confirm: true,
+            user_metadata: { full_name: PLATFORM_CONFIG.superAdminName },
+          });
+          if (matchUpdateErr) {
+            return NextResponse.json({ status: 'MATCH_UPDATE_FAILED', message: matchUpdateErr.message, details: matchUpdateErr }, { status: 500 });
+          }
+        } else {
+          return NextResponse.json({ status: 'CREATE_FAILED', message: createError.message || createError.name || 'User creation error', details: createError }, { status: 500 });
+        }
+      } else if (createData?.user) {
         authUserId = createData.user.id;
       }
     }
 
     // 2. Ensure Tenant Zero exists in public.tenants
-    await supabaseAdmin.from('tenants').upsert({
-      id: tenantZeroId,
+    const tenantPayload = {
+      tenant_uid: tenantZeroId,
       name: PLATFORM_CONFIG.masterAgencyName,
       slug: PLATFORM_CONFIG.masterAgencySlug,
       status: 'active',
       is_master_agency: true,
-    });
+    };
+    await supabaseAdmin.from('tenants').upsert(tenantPayload);
 
     // 3. Ensure Super Admin profile exists in public.users
-    await supabaseAdmin.from('users').upsert({
-      id: authUserId,
+    const userPayload = {
+      user_uid: authUserId,
       email: targetEmail,
       full_name: PLATFORM_CONFIG.superAdminName,
       role: 'super_admin',
       mfa_enabled: true,
-    });
+    };
+    await supabaseAdmin.from('users').upsert(userPayload);
 
     // 4. Ensure User Tenant junction exists in public.user_tenants
-    await supabaseAdmin.from('user_tenants').upsert({
-      user_id: authUserId,
-      tenant_id: tenantZeroId,
+    const linkPayload = {
+      user_uid: authUserId,
+      tenant_uid: tenantZeroId,
       role: 'owner',
       is_default: true,
-    }, { onConflict: 'user_id,tenant_id' });
+    };
+    await supabaseAdmin.from('user_tenants').upsert(linkPayload);
 
     return NextResponse.json({
       status: 'SUCCESS',

@@ -11,6 +11,8 @@ ADD COLUMN IF NOT EXISTS business_verification_status text DEFAULT 'UNVERIFIED';
 ALTER TABLE IF EXISTS public.wa_phone_numbers
 ADD COLUMN IF NOT EXISTS messaging_limit_tier text DEFAULT 'TIER_1K',
 ADD COLUMN IF NOT EXISTS name_status text DEFAULT 'NOT_APPROVED';
+ADD COLUMN IF NOT EXISTS lifecycle_status TEXT DEFAULT 'PROVISIONED',
+ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT false;
 
 -- 3. Alter public.provider_config
 ALTER TABLE IF EXISTS public.provider_config

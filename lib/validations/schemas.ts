@@ -45,6 +45,13 @@ export const enrollPhoneSchema = z.object({
   messaging_limit_tier: z.string().optional().default('TIER_1K'),
   name_status: z.string().optional().default('APPROVED'),
   is_test_number: z.boolean().optional().default(false),
+
+  // Parent WABA Metadata Fields
+  waba_name: z.string().optional(),
+  waba_currency: z.string().optional(),
+  waba_timezone_id: z.string().optional(),
+  waba_message_template_namespace: z.string().optional(),
+  waba_account_review_status: z.string().optional(),
 });
 
 // 3. WhatsApp Template Saving Input Schema

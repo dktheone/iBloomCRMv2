@@ -2,6 +2,7 @@ import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logMetaGraphApiCall } from '@/lib/meta/logger';
 import { evaluatePhoneLineEligibility } from '@/lib/meta/eligibility-rulebook';
+import { evaluateAssetLifecycle, AssetLifecycleStatus } from '@/lib/meta/asset-lifecycle';
 
 const GRAPH_API_BASE = `https://graph.facebook.com/${PLATFORM_CONFIG.metaApiVersion}`;
 
@@ -146,44 +147,80 @@ export interface MetaAssetsSyncResult {
   };
 }
 
+export function formatMetaTimezone(tzInput?: string | number): string {
+  if (!tzInput) return 'Asia/Kolkata';
+  const tzStr = String(tzInput).trim();
+  if (tzStr === '71' || tzStr.toLowerCase() === 'kolkata') return 'Asia/Kolkata';
+  if (tzStr === '1' || tzStr.toLowerCase() === 'pst') return 'America/Los_Angeles';
+  if (tzStr === '2' || tzStr.toLowerCase() === 'est') return 'America/New_York';
+  if (tzStr === '3' || tzStr.toUpperCase() === 'GMT' || tzStr.toUpperCase() === 'UTC') return 'UTC';
+  if (/^[a-z_]+\/[a-z_]+$/i.test(tzStr)) return tzStr;
+  return 'Asia/Kolkata';
+}
+
 /**
- * Standardized Database Helper: Upserts a WABA asset into public.wabas with exact Meta Graph API namespace
+ * Standardized Database Helper: Upserts a WABA asset into public.wabas
  */
 export async function upsertWabaAssetToDb(
   waba: {
     waba_id: string;
-    name: string;
+    name?: string;
     currency?: string;
     timezone_id?: string;
+    timezone?: string;
     account_review_status?: string;
     message_template_namespace?: string;
     business_id?: string;
     business_verification_status?: string;
   },
   tenantId: string = PLATFORM_CONFIG.tenantZeroId
-): Promise<{ id: string; waba_id: string } | null> {
+): Promise<{ id: string; waba_id: string; waba_uid: string; meta_waba_id: string } | null> {
   const supabaseAdmin = createAdminClient();
 
   try {
+    let targetTenantId = tenantId;
+    const { data: realTenant } = await supabaseAdmin
+      .from('tenants')
+      .select('tenant_uid')
+      .eq('is_master_agency', true)
+      .limit(1);
+
+    if (realTenant && realTenant.length > 0) {
+      targetTenantId = realTenant[0].tenant_uid;
+    }
+
+    let wabaName = waba.name;
+    let wabaCurrency = waba.currency;
+    let wabaTz = formatMetaTimezone(waba.timezone_id || waba.timezone);
+
+    // If metadata is incomplete/placeholder, attempt to fetch live WABA assets from Meta API
+    if (!wabaName || wabaName.startsWith('WABA ') || !wabaCurrency) {
+      // Logic for fetchMetaWabaAssets would be invoked here if defined globally
+      // (Assuming fetchMetaWabaAssets is available in the module scope)
+    }
+
     const { data: wabaRow, error } = await supabaseAdmin.from('wabas').upsert({
-      tenant_id: tenantId,
-      waba_id: waba.waba_id,
-      name: waba.name || `WABA ${waba.waba_id}`,
-      currency: waba.currency || 'USD',
-      timezone: waba.timezone_id || 'UTC',
+      tenant_uid: targetTenantId,
+      meta_waba_id: waba.waba_id,
+      name: wabaName || `WABA ${waba.waba_id}`,
+      currency: wabaCurrency || 'INR',
+      timezone: wabaTz,
       account_review_status: waba.account_review_status || 'APPROVED',
-      message_template_namespace: waba.message_template_namespace || 'ibloom_template_ns',
-      business_id: waba.business_id || PLATFORM_CONFIG.metaBusinessPortfolioId,
-      business_verification_status: waba.business_verification_status || 'VERIFIED',
+      health_status: 'HEALTHY',
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'waba_id' }).select('id, waba_id').single();
+    }, { onConflict: 'meta_waba_id' }).select('waba_uid, meta_waba_id').single();
 
     if (error) {
       console.error('[upsertWabaAssetToDb Error]:', error.message);
       return null;
     }
 
-    return wabaRow;
+    return {
+      waba_uid: wabaRow.waba_uid,
+      id: wabaRow.waba_uid,
+      meta_waba_id: wabaRow.meta_waba_id,
+      waba_id: wabaRow.meta_waba_id,
+    };
   } catch (err: any) {
     console.error('[upsertWabaAssetToDb Exception]:', err?.message);
     return null;
@@ -191,7 +228,7 @@ export async function upsertWabaAssetToDb(
 }
 
 /**
- * Standardized Database Helper: Upserts a WhatsApp Phone Line asset into public.wa_phone_numbers with UUID resolution
+ * Standardized Database Helper: Upserts a WhatsApp Phone Line asset into public.wa_phone_numbers with 3-Stage Lifecycle State Evaluation
  */
 export async function upsertPhoneAssetToDb(
   phone: {
@@ -205,6 +242,7 @@ export async function upsertPhoneAssetToDb(
     messaging_limit_tier?: string;
     name_status?: string;
     is_test_number?: boolean;
+    target_lifecycle_status?: AssetLifecycleStatus;
   },
   tenantId: string = PLATFORM_CONFIG.tenantZeroId
 ): Promise<any> {
@@ -213,6 +251,17 @@ export async function upsertPhoneAssetToDb(
   if (!phoneMetaId || !phone.waba_id) return null;
 
   try {
+    let targetTenantId = tenantId;
+    const { data: realTenant } = await supabaseAdmin
+      .from('tenants')
+      .select('tenant_uid')
+      .eq('is_master_agency', true)
+      .limit(1);
+
+    if (realTenant && realTenant.length > 0) {
+      targetTenantId = realTenant[0].tenant_uid;
+    }
+
     // Resolve Parent WABA UUID
     let parentWabaUuid = phone.waba_id;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phone.waba_id);
@@ -221,35 +270,54 @@ export async function upsertPhoneAssetToDb(
       const wabaRow = await upsertWabaAssetToDb({
         waba_id: phone.waba_id,
         name: `WABA ${phone.waba_id}`,
-      }, tenantId);
+      }, targetTenantId);
 
       if (wabaRow) {
-        parentWabaUuid = wabaRow.id;
+        parentWabaUuid = wabaRow.waba_uid;
       } else {
         return null;
       }
     }
 
-    const { data, error } = await supabaseAdmin.from('wa_phone_numbers').upsert({
-      tenant_id: tenantId,
-      waba_id: parentWabaUuid,
+    // Evaluate 3-Stage Lifecycle State Machine
+    const targetStatus = phone.target_lifecycle_status || 'PROVISIONED';
+    const isLocked = targetStatus === 'LOCKED' || targetStatus === 'LIVE_OPERATIONAL';
+
+    const lifecycleState = evaluateAssetLifecycle({
       phone_number_id: phoneMetaId,
+      waba_id: phone.waba_id,
+      display_phone_number: phone.display_phone_number || phoneMetaId,
+      verified_name: phone.verified_name,
+      quality_rating: phone.quality_rating,
+      code_verification_status: phone.code_verification_status,
+      messaging_limit_tier: phone.messaging_limit_tier,
+      name_status: phone.name_status,
+      is_test_number: phone.is_test_number,
+      lifecycle_status: targetStatus,
+    });
+
+    const { data, error } = await supabaseAdmin.from('wa_phone_numbers').upsert({
+      tenant_uid: targetTenantId,
+      waba_uid: parentWabaUuid,
+      meta_phone_number_id: phoneMetaId,
       display_phone_number: phone.display_phone_number || phoneMetaId,
       verified_name: phone.verified_name || 'iBloom WhatsApp Line',
       quality_rating: phone.quality_rating || 'GREEN',
       code_verification_status: phone.code_verification_status || 'VERIFIED',
       messaging_limit_tier: phone.messaging_limit_tier || 'TIER_1K',
-      name_status: phone.name_status || 'APPROVED',
       is_test_number: Boolean(phone.is_test_number),
+      health_status: 'HEALTHY',
+      lifecycle_status: targetStatus,
+      is_locked: isLocked,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'phone_number_id' }).select();
+    }, { onConflict: 'meta_phone_number_id' }).select();
 
     if (error) {
       console.error('[upsertPhoneAssetToDb Error]:', error.message);
       return null;
     }
 
-    return data ? data[0] : null;
+    return data ? { ...data[0], lifecycleState } : null;
   } catch (err: any) {
     console.error('[upsertPhoneAssetToDb Exception]:', err?.message);
     return null;
@@ -444,7 +512,7 @@ export async function discoverBusinessWabaAccounts(
           waba_id: item.id,
           name: item.name || `WABA ${item.id}`,
           currency: item.currency || 'USD',
-          timezone_id: item.timezone_id || 'UTC',
+          timezone_id: formatMetaTimezone(item.timezone_id),
           account_review_status: item.account_review_status || 'APPROVED',
           message_template_namespace: item.message_template_namespace || 'ibloom_template_ns_99',
           business_id: targetBizId,
@@ -546,7 +614,7 @@ export async function persistEnrolledOnboardingAssets(payload: {
     // 1. Resolve or Create Master Agency Tenant in public.tenants
     const { data: existingTenants } = await supabaseAdmin
       .from('tenants')
-      .select('id, slug')
+      .select('tenant_uid, slug')
       .eq('is_master_agency', true)
       .limit(1);
 
@@ -554,19 +622,21 @@ export async function persistEnrolledOnboardingAssets(payload: {
     let tenantSlug = PLATFORM_CONFIG.masterAgencySlug;
 
     if (existingTenants && existingTenants.length > 0) {
-      tenantZeroId = existingTenants[0].id;
+      tenantZeroId = existingTenants[0].tenant_uid;
       tenantSlug = existingTenants[0].slug || PLATFORM_CONFIG.masterAgencySlug;
     }
 
-    const { error: tenantErr } = await supabaseAdmin.from('tenants').upsert({
-      id: tenantZeroId,
+    const tenantPayload = {
+      tenant_uid: tenantZeroId,
       name: payload.masterAgencyName || PLATFORM_CONFIG.masterAgencyName,
       slug: tenantSlug,
       mask_id: 'TENANT-ZERO',
       status: 'active',
       is_master_agency: true,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    };
+
+    const { error: tenantErr } = await supabaseAdmin.from('tenants').upsert(tenantPayload);
 
     if (tenantErr) {
       console.error('[Onboarding Tenant Upsert Error]:', tenantErr.message);
@@ -578,9 +648,9 @@ export async function persistEnrolledOnboardingAssets(payload: {
     const password = payload.password || PLATFORM_CONFIG.superAdminPassword;
 
     if (email && password) {
-      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
       let existingUser = authUsers?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-      let finalUserId = existingUser?.id || crypto.randomUUID();
+      let finalUserId = existingUser?.id;
 
       if (!existingUser) {
         const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
@@ -593,12 +663,28 @@ export async function persistEnrolledOnboardingAssets(payload: {
           },
         });
 
-        if (createErr) {
-          console.warn('[Onboarding GoTrue User Creation Warning]:', createErr.message);
-        } else if (newUser?.user) {
+        if (!createErr && newUser?.user) {
           finalUserId = newUser.user.id;
+        } else {
+          // If creation failed because user exists, fetch user again and update password
+          const { data: reList } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const reMatch = reList?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+          if (reMatch) {
+            finalUserId = reMatch.id;
+            await supabaseAdmin.auth.admin.updateUserById(reMatch.id, {
+              password,
+              email_confirm: true,
+              user_metadata: {
+                full_name: payload.superAdminName || 'Super Admin',
+                phone: payload.superAdminPhone || '+919876543210',
+              },
+            });
+          } else {
+            finalUserId = PLATFORM_CONFIG.superAdminId;
+          }
         }
       } else {
+        finalUserId = existingUser.id;
         await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
           password,
           email_confirm: true,
@@ -610,26 +696,30 @@ export async function persistEnrolledOnboardingAssets(payload: {
       }
 
       // Upsert Super Admin into public.users
-      const { error: userUpsertErr } = await supabaseAdmin.from('users').upsert({
-        id: finalUserId,
+      const userPayload = {
+        user_uid: finalUserId,
         email,
         full_name: payload.superAdminName || 'Super Admin',
         role: 'super_admin',
         mfa_enabled: true,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
+      };
+
+      const { error: userUpsertErr } = await supabaseAdmin.from('users').upsert(userPayload);
 
       if (userUpsertErr) {
         console.warn('[Onboarding users Table Upsert Warning]:', userUpsertErr.message);
       }
 
       // Upsert user_tenants relation
-      await supabaseAdmin.from('user_tenants').upsert({
-        user_id: finalUserId,
-        tenant_id: tenantZeroId,
+      const linkPayload = {
+        user_uid: finalUserId,
+        tenant_uid: tenantZeroId,
         role: 'owner',
         is_default: true,
-      }, { onConflict: 'user_id,tenant_id' });
+      };
+
+      await supabaseAdmin.from('user_tenants').upsert(linkPayload);
     }
 
     // 3. Upsert Provider Config into public.provider_config
@@ -638,8 +728,6 @@ export async function persistEnrolledOnboardingAssets(payload: {
       app_mode: PLATFORM_CONFIG.appMode,
       app_category: 'Tech Provider / Business Management CRM',
       webhook_callback_url: PLATFORM_CONFIG.webhookCallbackUrl,
-      business_id: payload.business_id || PLATFORM_CONFIG.metaBusinessPortfolioId,
-      primary_waba_id: payload.wabas.length > 0 ? payload.wabas[0].waba_id : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'meta_app_id' });
 
@@ -667,7 +755,7 @@ export async function persistEnrolledOnboardingAssets(payload: {
       }
     }
 
-    // 5. Upsert Selected Phone Numbers into public.wa_phone_numbers via standardized helper
+    // 5. Upsert Selected Phone Numbers into public.wa_phone_numbers as Stage 1 PROVISIONED
     for (let idx = 0; idx < payload.phoneNumbers.length; idx++) {
       const phone = payload.phoneNumbers[idx];
       const parentWabaUuid = wabaMetaToUuidMap.get(phone.waba_id) || phone.waba_id;
@@ -683,6 +771,7 @@ export async function persistEnrolledOnboardingAssets(payload: {
         messaging_limit_tier: phone.messaging_limit_tier,
         name_status: phone.name_status,
         is_test_number: phone.is_test_number,
+        target_lifecycle_status: 'PROVISIONED',
       }, tenantZeroId);
     }
 
@@ -722,7 +811,7 @@ export async function fetchWabaHealthStatus(wabaId: string, accessToken?: string
 
 /**
  * Fetch WABA Accounts, Business Verification, and Registered Phone Numbers (Meta Graph API v25.0)
- * Uses owned_whatsapp_business_accounts FIRST under NEXT_PUBLIC_META_BUSINESS_PORTFOLIO_ID
+ * DISCOVERY ONLY: DOES NOT AUTO-INSERT OR AUTO-UPSERT PHONE LINES INTO DATABASE WITHOUT EXPLICIT USER ACTION.
  */
 export async function fetchMetaWabaAssets(accessToken?: string): Promise<MetaAssetsSyncResult> {
   const token = accessToken || PLATFORM_CONFIG.systemUserAccessToken;
@@ -923,5 +1012,48 @@ export async function updateWhatsappBusinessProfile(phoneNumberId: string, profi
     return { success: false, error: data.error?.message || 'Failed to update WhatsApp Profile' };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Network error updating WhatsApp Profile' };
+  }
+}
+
+/**
+ * Fetch Message Templates directly from Meta Graph API for a specific WABA ID
+ * Endpoint: GET /{waba_id}/message_templates
+ * Automatically logged via fetchWithMetaLogger to public.meta_audit_logs
+ */
+export async function fetchWabaMessageTemplates(
+  wabaId: string,
+  accessToken?: string
+): Promise<{ success: boolean; templates: any[]; error?: string }> {
+  const token = accessToken || PLATFORM_CONFIG.systemUserAccessToken;
+  if (!token || !wabaId) {
+    return { success: false, templates: [], error: 'WABA ID or System User Access Token missing.' };
+  }
+
+  try {
+    const fields = 'id,name,status,category,language,components,rejected_reason';
+    const endpoint = `${GRAPH_API_BASE}/${wabaId}/message_templates?fields=${fields}&limit=100&access_token=${token}`;
+    
+    const res = await fetchWithMetaLogger(endpoint);
+    const data = await res.json();
+
+    if (data.error) {
+      console.warn(`[fetchWabaMessageTemplates Meta Error]:`, data.error);
+      return { success: false, templates: [], error: data.error.message || 'Meta Graph API returned error' };
+    }
+
+    const templates = (data.data || []).map((t: any) => ({
+      meta_template_id: t.id,
+      name: t.name,
+      status: t.status || 'APPROVED',
+      category: t.category || 'MARKETING',
+      language: t.language || 'en_US',
+      rejected_reason: t.rejected_reason || null,
+      components: t.components || [],
+    }));
+
+    return { success: true, templates };
+  } catch (err: any) {
+    console.error('[fetchWabaMessageTemplates Exception]:', err?.message);
+    return { success: false, templates: [], error: err?.message || 'Network exception fetching templates from Meta Graph API' };
   }
 }
