@@ -2,24 +2,23 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { setupWizardSchema } from '@/lib/validations/schemas';
-import { logValidationFailure } from '@/lib/security/audit-logger';
+import { apiError, apiSuccess } from '@/lib/api/response';
+import { validatePayload } from '@/lib/api/validate';
+import { fetchMasterTenant } from '@/lib/supabase/tenant';
 
 export async function GET() {
   try {
     const supabaseAdmin = createAdminClient();
 
     // Check if Master Agency already exists in Supabase
-    const { data: tenantData } = await supabaseAdmin
-      .from('tenants')
-      .select('tenant_uid, id, name, is_master_agency, status, slug')
-      .eq('is_master_agency', true)
-      .limit(1);
-
-    const isInitialized = Boolean(tenantData && tenantData.length > 0);
+    const masterAgency = await fetchMasterTenant(
+      supabaseAdmin,
+      'tenant_uid, id, name, is_master_agency, status, slug'
+    );
 
     return NextResponse.json({
-      isInitialized,
-      masterAgency: tenantData?.[0] || null,
+      isInitialized: Boolean(masterAgency),
+      masterAgency,
     });
   } catch (err: any) {
     return NextResponse.json({ isInitialized: false, error: err?.message });
@@ -31,35 +30,16 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // 1. Validate incoming payload against Zod Schema Guard
-    const validationResult = setupWizardSchema.safeParse(body);
+    const validationResult = await validatePayload(
+      setupWizardSchema,
+      body,
+      request,
+      'setup_wizard',
+      'Validation failed. Please check your form input.'
+    );
 
     if (!validationResult.success) {
-      const fieldErrors: Record<string, string> = {};
-      const userAgent = request.headers.get('user-agent') || 'Unknown User-Agent';
-      const ipAddress = request.headers.get('x-forwarded-for') || '127.0.0.1';
-
-      for (const issue of validationResult.error.issues) {
-        const fieldName = issue.path.join('.') || 'payload';
-        fieldErrors[fieldName] = issue.message;
-
-        // Log validation failure to security audit table
-        await logValidationFailure({
-          formSurface: 'setup_wizard',
-          rejectedField: fieldName,
-          failureReason: issue.message,
-          ipAddress,
-          userAgent,
-        });
-      }
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Validation failed. Please check your form input.',
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationResult.response;
     }
 
     const { masterAgencyName, superAdminName, superAdminEmail, superAdminPhone, password } = validationResult.data;
@@ -67,18 +47,14 @@ export async function POST(request: Request) {
     const supabaseAdmin = createAdminClient();
 
     // Check if Master Agency already exists
-    const { data: existingTenants } = await supabaseAdmin
-      .from('tenants')
-      .select('tenant_uid, id, slug')
-      .eq('is_master_agency', true)
-      .limit(1);
+    const existingTenant = await fetchMasterTenant(supabaseAdmin, 'tenant_uid, id, slug');
 
     let tenantZeroId = crypto.randomUUID();
     let tenantSlug = PLATFORM_CONFIG.masterAgencySlug;
 
-    if (existingTenants && existingTenants.length > 0) {
-      tenantZeroId = existingTenants[0].tenant_uid || existingTenants[0].id;
-      tenantSlug = existingTenants[0].slug || PLATFORM_CONFIG.masterAgencySlug;
+    if (existingTenant) {
+      tenantZeroId = existingTenant.tenant_uid || existingTenant.id;
+      tenantSlug = existingTenant.slug || PLATFORM_CONFIG.masterAgencySlug;
     }
 
     // Register/Update Super Admin in Supabase GoTrue Auth
@@ -121,7 +97,7 @@ export async function POST(request: Request) {
     const { error: tenantErr } = await supabaseAdmin.from('tenants').upsert(tenantRecord);
 
     if (tenantErr) {
-      return NextResponse.json({ success: false, error: tenantErr.message }, { status: 500 });
+      return apiError(tenantErr.message);
     }
 
     // Provision Super Admin profile in public.users
@@ -155,8 +131,7 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'meta_app_id' });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       message: 'Master Agency and Super Admin onboarding initialized successfully!',
       masterAgency: {
         name: masterAgencyName,
@@ -170,9 +145,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({
-      success: false,
-      error: error?.message || 'Failed to initialize Master Agency onboarding setup.',
-    }, { status: 500 });
+    return apiError(error?.message || 'Failed to initialize Master Agency onboarding setup.');
   }
 }

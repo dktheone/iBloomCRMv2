@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useSession } from '@/components/providers/SessionProvider';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
+import { apiGet, apiPost } from '@/lib/api/http';
 
 interface SetupStatus {
   providerConfigured: boolean;
@@ -46,11 +47,7 @@ export default function DashboardPage() {
     refetch: refetchMetaConnection,
   } = useQuery({
     queryKey: ['meta-connection-test'],
-    queryFn: async () => {
-      const res = await fetch('/api/meta/test-connection');
-      const data = await res.json();
-      return data;
-    },
+    queryFn: () => apiGet('/api/meta/test-connection'),
     staleTime: 1000 * 60 * 5, // 5 minutes stale time
   });
 
@@ -61,11 +58,7 @@ export default function DashboardPage() {
     refetch: refetchUnregistered,
   } = useQuery({
     queryKey: ['meta-unregistered-assets'],
-    queryFn: async () => {
-      const res = await fetch('/api/meta/unregistered-assets');
-      const data = await res.json();
-      return data;
-    },
+    queryFn: () => apiGet('/api/meta/unregistered-assets'),
     staleTime: 1000 * 60 * 5, // 5 minutes stale time
   });
 
@@ -78,8 +71,7 @@ export default function DashboardPage() {
   async function handleManualTestConnection() {
     toast.info('Testing Meta Graph API Connection...');
     try {
-      const res = await fetch('/api/meta/test-connection?force=true');
-      const data = await res.json();
+      const data = await apiGet('/api/meta/test-connection?force=true');
       if (data.connectionTest?.success) {
         toast.success('Meta Connection Verified!', {
           description: `Connected to ${data.connectionTest.appName || PLATFORM_CONFIG.metaAppName}.`,
@@ -97,21 +89,16 @@ export default function DashboardPage() {
   async function handleRegisterUnregisteredPhone(phone: any) {
     setRegisteringPhoneId(phone.id);
     try {
-      const res = await fetch('/api/meta/enroll-phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          waba_id: phone.waba_id,
-          phone_number_id: phone.id,
-          display_phone_number: phone.display_phone_number,
-          verified_name: phone.verified_name,
-          quality_rating: phone.quality_rating,
-          code_verification_status: phone.code_verification_status,
-          is_test_number: phone.is_test_number,
-        }),
+      const data = await apiPost('/api/meta/enroll-phone', {
+        waba_id: phone.waba_id,
+        phone_number_id: phone.id,
+        display_phone_number: phone.display_phone_number,
+        verified_name: phone.verified_name,
+        quality_rating: phone.quality_rating,
+        code_verification_status: phone.code_verification_status,
+        is_test_number: phone.is_test_number,
       });
 
-      const data = await res.json();
       if (data.success) {
         toast.success(`Registered & Locked line ${phone.display_phone_number} to Tenant Zero DB!`, {
           icon: <Icon icon="solar:check-circle-bold" className="w-5 h-5 text-emerald-500" />,

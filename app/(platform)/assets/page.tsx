@@ -8,6 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { evaluateAssetLifecycle } from '@/lib/meta/asset-lifecycle';
 import { detectMetaStatusDrift } from '@/lib/meta/status-drift';
+import { apiGet, apiPost } from '@/lib/api/http';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 
 interface WabaRecord {
   id?: string;
@@ -41,22 +43,13 @@ export default function AssetsPage() {
 
   const [enrollingPhoneId, setEnrollingPhoneId] = useState<string | null>(null);
   const [unenrollingPhoneId, setUnenrollingPhoneId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { copiedId, copy: copyToClipboard } = useCopyToClipboard();
   const [showTooltip, setShowTooltip] = useState(false);
 
   const [dbEnrolledPhones, setDbEnrolledPhones] = useState<PhoneRecord[]>([]);
   const [dbEnrolledWabas, setDbEnrolledWabas] = useState<WabaRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewFilter, setViewFilter] = useState<'ALL' | 'LIVE_OPERATIONAL' | 'PROVISIONED' | 'UNLOCKED_STANDBY' | 'UNREGISTERED'>('ALL');
-
-  function copyToClipboard(text: string, id: string) {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    toast.success(`Copied ${text} to clipboard!`, {
-      icon: <Icon icon="solar:copy-bold-duotone" className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />,
-    });
-    setTimeout(() => setCopiedId(null), 2000);
-  }
 
   // TanStack Query for Meta Discovered Assets
   const {
@@ -65,11 +58,7 @@ export default function AssetsPage() {
     refetch: refetchAssets,
   } = useQuery({
     queryKey: ['meta-discovered-assets'],
-    queryFn: async () => {
-      const res = await fetch('/api/meta/sync-assets');
-      const data = await res.json();
-      return data;
-    },
+    queryFn: () => apiGet('/api/meta/sync-assets'),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -80,8 +69,7 @@ export default function AssetsPage() {
   async function handleManualSyncAssets() {
     toast.info('Fetching Live Assets from Meta API...');
     try {
-      const res = await fetch('/api/meta/sync-assets?force=true');
-      const data = await res.json();
+      const data = await apiGet('/api/meta/sync-assets?force=true');
       if (data.success) {
         toast.success('Live Assets Synced from Meta API!', {
           description: `Discovered ${data.wabaCount || 0} WABA(s) and ${data.phoneCount || 0} line(s).`,
@@ -98,8 +86,7 @@ export default function AssetsPage() {
 
   async function loadEnrolledAssetsFromSupabase() {
     try {
-      const res = await fetch('/api/meta/enrolled-assets');
-      const data = await res.json();
+      const data = await apiGet('/api/meta/enrolled-assets');
 
       if (data.success) {
         if (data.enrolledPhones) setDbEnrolledPhones(data.enrolledPhones);
@@ -128,22 +115,16 @@ export default function AssetsPage() {
     }
 
     try {
-      const res = await fetch('/api/meta/enroll-phone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...phone,
-          waba_id: parentWaba?.waba_id || phone.waba_id,
-          waba_name: parentWaba?.name,
-          waba_currency: parentWaba?.currency,
-          waba_timezone_id: parentWaba?.timezone_id || parentWaba?.timezone,
-          waba_message_template_namespace: parentWaba?.message_template_namespace,
-          waba_account_review_status: parentWaba?.account_review_status,
-          action,
-        }),
+      const data = await apiPost('/api/meta/enroll-phone', {
+        ...phone,
+        waba_id: parentWaba?.waba_id || phone.waba_id,
+        waba_name: parentWaba?.name,
+        waba_currency: parentWaba?.currency,
+        waba_timezone_id: parentWaba?.timezone_id || parentWaba?.timezone,
+        waba_message_template_namespace: parentWaba?.message_template_namespace,
+        waba_account_review_status: parentWaba?.account_review_status,
+        action,
       });
-
-      const data = await res.json();
 
       if (data.success) {
         const actionLabel =

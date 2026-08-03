@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from '@/lib/supabase/env';
 
 // Service-Role client for backend operations, Vault secret decryption, & system webhooks
 export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bibbpavwvarzljqqwcef.supabase.co';
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabaseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
 
   if (!serviceRoleKey) {
     console.warn('[Supabase Admin] SUPABASE_SERVICE_ROLE_KEY is not set. Service-role operations will fail.');

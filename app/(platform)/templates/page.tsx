@@ -11,6 +11,7 @@ import ExploreSidebar from './components/ExploreSidebar';
 import PhoneSimulator from './components/PhoneSimulator';
 import { WhatsAppTemplate, TemplateCategory } from '@/lib/types/template-types';
 import { PREBUILT_TEMPLATES } from '@/lib/data/prebuilt-templates';
+import { apiDelete, apiGet, apiPost } from '@/lib/api/http';
 
 export default function TemplatesPage() {
   const router = useRouter();
@@ -86,8 +87,7 @@ export default function TemplatesPage() {
     setIsLoadingTemplates(true);
     try {
       const targetWabaId = activeLine.official_waba_id || activeLine.waba_id;
-      const res = await fetch(`/api/meta/templates?waba_id=${targetWabaId}`);
-      const data = await res.json();
+      const data = await apiGet(`/api/meta/templates?waba_id=${targetWabaId}`);
 
       if (data.success) {
         const disc = (data.discoveredTemplates || []).map((t: any) => normalizeTemplateRecord(t, targetWabaId));
@@ -126,15 +126,10 @@ export default function TemplatesPage() {
     if (!activeLine) return;
     try {
       const targetWabaId = activeLine.official_waba_id || activeLine.waba_id;
-      const res = await fetch('/api/meta/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...tmpl,
-          waba_id: targetWabaId,
-        }),
+      const data = await apiPost('/api/meta/templates', {
+        ...tmpl,
+        waba_id: targetWabaId,
       });
-      const data = await res.json();
 
       if (data.success) {
         toast.success(`Saved & Locked "${tmpl.name}"!`, {
@@ -156,15 +151,10 @@ export default function TemplatesPage() {
     setIsSavingBatch(true);
     try {
       const targetWabaId = activeLine.official_waba_id || activeLine.waba_id;
-      const res = await fetch('/api/meta/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          waba_id: targetWabaId,
-          batchTemplates: discoveredTemplates,
-        }),
+      const data = await apiPost('/api/meta/templates', {
+        waba_id: targetWabaId,
+        batchTemplates: discoveredTemplates,
       });
-      const data = await res.json();
 
       if (data.success) {
         toast.success('Batch Saved & Locked!', {
@@ -194,8 +184,7 @@ export default function TemplatesPage() {
   async function handleDeleteTemplate(id?: string, name?: string) {
     if (!id) return;
     try {
-      const res = await fetch(`/api/meta/templates?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
+      const data = await apiDelete(`/api/meta/templates?id=${id}`);
       if (data.success) {
         toast.info(`Template "${name || 'Item'}" Soft-Deleted`, {
           description: 'Preserved in DB audit logs & removed from Meta WABA.',

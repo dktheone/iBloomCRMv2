@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { apiException, apiSuccess } from '@/lib/api/response';
+import { normalizePhoneRecord, normalizeWabaRecord } from '@/lib/meta/asset-normalizers';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,32 +28,12 @@ export async function GET() {
       console.error('[enrolled-assets Error reading wabas]:', wabaErr.message);
     }
 
-    const mappedPhones = (dbPhones || []).map((p: any) => ({
-      ...p,
-      phone_number_id: p.meta_phone_number_id || p.phone_number_id || p.phone_line_uid || p.id,
-      meta_phone_number_id: p.meta_phone_number_id || p.phone_number_id || p.phone_line_uid || p.id,
-      waba_id: p.waba_uid || p.waba_id || p.meta_waba_id,
-      id: p.phone_line_uid || p.id || p.meta_phone_number_id,
-    }));
-
-    const mappedWabas = (dbWabas || []).map((w: any) => ({
-      ...w,
-      waba_id: w.meta_waba_id || w.waba_id || w.waba_uid || w.id,
-      meta_waba_id: w.meta_waba_id || w.waba_id || w.waba_uid || w.id,
-      id: w.waba_uid || w.id || w.meta_waba_id,
-    }));
-
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       timestamp: new Date().toISOString(),
-      enrolledPhones: mappedPhones,
-      enrolledWabas: mappedWabas,
+      enrolledPhones: (dbPhones || []).map(normalizePhoneRecord),
+      enrolledWabas: (dbWabas || []).map(normalizeWabaRecord),
     });
   } catch (err: any) {
-    console.error('[enrolled-assets Exception]:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Failed to fetch enrolled assets from DB.' },
-      { status: 500 }
-    );
+    return apiException(err, 'Failed to fetch enrolled assets from DB.', 500, '[enrolled-assets Exception]');
   }
 }

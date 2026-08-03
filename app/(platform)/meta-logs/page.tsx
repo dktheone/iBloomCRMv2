@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import { MetaGraphLogEntry } from '@/lib/meta/logger';
+import { apiDelete, apiGet } from '@/lib/api/http';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 
 export default function MetaGraphLogsPage() {
   const [logs, setLogs] = useState<MetaGraphLogEntry[]>([]);
@@ -19,7 +21,7 @@ export default function MetaGraphLogsPage() {
   const [isClearing, setIsClearing] = useState(false);
 
   const [selectedLog, setSelectedLog] = useState<MetaGraphLogEntry | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { copiedId, copyJson: copyJsonPayload } = useCopyToClipboard();
 
   async function fetchLogs(page = 1) {
     setIsLoading(true);
@@ -32,8 +34,7 @@ export default function MetaGraphLogsPage() {
         search: searchTerm,
       });
 
-      const res = await fetch(`/api/meta/logs?${params.toString()}`);
-      const data = await res.json();
+      const data = await apiGet(`/api/meta/logs?${params.toString()}`);
 
       if (data.success) {
         setLogs(data.logs || []);
@@ -64,8 +65,7 @@ export default function MetaGraphLogsPage() {
 
     setIsClearing(true);
     try {
-      const res = await fetch('/api/meta/logs', { method: 'DELETE' });
-      const data = await res.json();
+      const data = await apiDelete('/api/meta/logs');
 
       if (data.success) {
         toast.success('Meta Graph API Log History Cleared!');
@@ -79,15 +79,6 @@ export default function MetaGraphLogsPage() {
     } finally {
       setIsClearing(false);
     }
-  }
-
-  function copyJsonPayload(obj: any, id: string) {
-    navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
-    setCopiedId(id);
-    toast.success('JSON response copied to clipboard!', {
-      icon: <Icon icon="solar:copy-bold-duotone" className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />,
-    });
-    setTimeout(() => setCopiedId(null), 2000);
   }
 
   const successCount = logs.filter((l) => l.ok).length;

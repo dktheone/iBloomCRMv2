@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { recordAuditEvent } from '@/lib/security/audit-engine';
 import { fetchWabaMessageTemplates, upsertWabaAssetToDb } from '@/lib/meta/graph-client';
+import { apiError, apiException, apiSuccess } from '@/lib/api/response';
+import { resolveMasterTenantId } from '@/lib/supabase/tenant';
+import { isUuid } from '@/lib/utils/identifiers';
+
+const ZERO_TENANT_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function GET(request: Request) {
   try {
@@ -14,9 +18,7 @@ export async function GET(request: Request) {
     let metaNumericWabaId: string | null = null;
 
     if (wabaIdParam) {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(wabaIdParam);
-
-      if (isUuid) {
+      if (isUuid(wabaIdParam)) {
         resolvedWabaUuid = wabaIdParam;
         const { data: wabaRow } = await supabase
           .from('wabas')
@@ -65,15 +67,14 @@ export async function GET(request: Request) {
       return !existingDbKeys.has(key);
     });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       waba_id: metaNumericWabaId || wabaIdParam,
       waba_uuid: resolvedWabaUuid,
       discoveredTemplates,
       databaseTemplates: dbTemplates,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Server Exception' }, { status: 500 });
+    return apiException(err);
   }
 }
 
@@ -85,9 +86,8 @@ export async function POST(request: Request) {
     // Check for Batch Save ("Save All Discovered Templates")
     if (Array.isArray(body.batchTemplates) && body.waba_id) {
       let targetWabaUuid = body.waba_id;
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.waba_id);
 
-      if (!isUuid) {
+      if (!isUuid(body.waba_id)) {
         const { data: wabaRow } = await supabaseAdmin
           .from('wabas')
           .select('waba_uid, id')
@@ -104,12 +104,7 @@ export async function POST(request: Request) {
       }
 
       // Fetch master tenant ID
-      const { data: tenantRow } = await supabaseAdmin
-        .from('tenants')
-        .select('tenant_uid, id')
-        .eq('is_master_agency', true)
-        .limit(1);
-      const tenantId = tenantRow && tenantRow.length > 0 ? (tenantRow[0].tenant_uid || tenantRow[0].id) : '00000000-0000-0000-0000-000000000000';
+      const tenantId = await resolveMasterTenantId(supabaseAdmin, 'auto', ZERO_TENANT_ID);
 
       for (const t of body.batchTemplates) {
         const record = {
@@ -131,20 +126,18 @@ export async function POST(request: Request) {
           .upsert(record, { onConflict: 'waba_uid,name,language' });
       }
 
-      return NextResponse.json({
-        success: true,
+      return apiSuccess({
         message: `Successfully saved batch of ${body.batchTemplates.length} templates into DB as LOCKED operational!`,
       });
     }
 
     if (!body.name || !body.waba_id) {
-      return NextResponse.json({ success: false, error: 'Missing template name or waba_id' }, { status: 400 });
+      return apiError('Missing template name or waba_id', 400);
     }
 
     let resolvedWabaUuid = body.waba_id;
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.waba_id);
 
-    if (!isUuid) {
+    if (!isUuid(body.waba_id)) {
       const { data: wabaRow } = await supabaseAdmin
         .from('wabas')
         .select('waba_uid')
@@ -161,12 +154,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch master tenant ID
-    const { data: tenantRow } = await supabaseAdmin
-      .from('tenants')
-      .select('tenant_uid')
-      .eq('is_master_agency', true)
-      .limit(1);
-    const tenantId = tenantRow && tenantRow.length > 0 ? tenantRow[0].tenant_uid : '00000000-0000-0000-0000-000000000000';
+    const tenantId = await resolveMasterTenantId(supabaseAdmin, 'tenant_uid', ZERO_TENANT_ID);
 
     // Standardize single template payload for DB persistence as LOCKED operational
     const templateRecord = {
@@ -197,7 +185,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      return apiError(error.message, 400);
     }
 
     // Append Audit Event
@@ -213,12 +201,9 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      template: data,
-    });
+    return apiSuccess({ template: data });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Server Exception' }, { status: 500 });
+    return apiException(err);
   }
 }
 
@@ -229,7 +214,7 @@ export async function DELETE(request: Request) {
     const templateId = searchParams.get('id');
 
     if (!templateId) {
-      return NextResponse.json({ success: false, error: 'Missing template id' }, { status: 400 });
+      return apiError('Missing template id', 400);
     }
 
     // Soft-Delete Contract: update status to ARCHIVED & unlock
@@ -239,7 +224,7 @@ export async function DELETE(request: Request) {
       .eq('id', templateId);
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+      return apiError(error.message, 400);
     }
 
     // Append Audit Event
@@ -251,11 +236,8 @@ export async function DELETE(request: Request) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Template soft-deleted and archived.',
-    });
+    return apiSuccess({ message: 'Template soft-deleted and archived.' });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Server Exception' }, { status: 500 });
+    return apiException(err);
   }
 }

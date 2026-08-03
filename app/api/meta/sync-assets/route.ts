@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { fetchMetaWabaAssets } from '@/lib/meta/graph-client';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { getOrSetCache } from '@/lib/redis/client';
+import { apiError, apiSuccess } from '@/lib/api/response';
 
 /**
  * GET /api/meta/sync-assets
@@ -22,18 +23,15 @@ export async function GET(request: NextRequest) {
     );
 
     if (!assetResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: assetResult.error || 'Failed to fetch WABA assets from Meta API v25.0.',
+      return apiError(assetResult.error || 'Failed to fetch WABA assets from Meta API v25.0.', 500, {
         errorCode200Detected: assetResult.errorCode200Detected || false,
         requestDetails: assetResult.requestDetails,
-      }, { status: 500 });
+      });
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       timestamp: new Date().toISOString(),
       apiVersion: PLATFORM_CONFIG.metaApiVersion,
-      success: true,
       wabaCount: assetResult.wabas.length,
       phoneCount: assetResult.phoneNumbers.length,
       wabas: assetResult.wabas,
@@ -44,10 +42,8 @@ export async function GET(request: NextRequest) {
       requestDetails: assetResult.requestDetails,
     });
   } catch (error: any) {
-    return NextResponse.json({
+    return apiError(error?.message || 'Failed to sync Meta WABA assets.', 500, {
       timestamp: new Date().toISOString(),
-      success: false,
-      error: error?.message || 'Failed to sync Meta WABA assets.',
-    }, { status: 500 });
+    });
   }
 }

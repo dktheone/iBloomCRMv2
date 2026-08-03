@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { getOrSetCache } from '@/lib/redis/client';
+import { apiError } from '@/lib/api/response';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,10 +51,8 @@ export async function GET(request: NextRequest) {
       connectionTest: result,
     });
   } catch (error: any) {
-    return NextResponse.json({
+    return apiError(error?.message || 'Failed to test Meta Graph API connection.', 500, {
       timestamp: new Date().toISOString(),
-      success: false,
-      error: error?.message || 'Failed to test Meta Graph API connection.',
-    }, { status: 500 });
+    });
   }
 }

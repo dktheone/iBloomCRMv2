@@ -16,6 +16,7 @@ import {
   TemplateButton,
   VariableExample,
 } from '@/lib/types/template-types';
+import { apiPost } from '@/lib/api/http';
 
 function TemplateBuilderContent() {
   const router = useRouter();
@@ -215,13 +216,7 @@ function TemplateBuilderContent() {
         authConfig: category === 'AUTHENTICATION' ? authConfig : undefined,
       };
 
-      const res = await fetch('/api/meta/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(templatePayload),
-      });
-
-      const data = await res.json();
+      const data = await apiPost('/api/meta/templates', templatePayload);
       if (data.success) {
         toast.success(`Template "${templateName}" ${status === 'DRAFT' ? 'Saved as Draft' : 'Submitted to Meta WABA'}!`, {
           description: 'Saved to Master Template Group in Supabase DB.',

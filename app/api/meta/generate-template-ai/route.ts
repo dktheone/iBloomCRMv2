@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { apiException, apiSuccess } from '@/lib/api/response';
 
 export async function POST(request: Request) {
   try {
@@ -8,8 +8,7 @@ export async function POST(request: Request) {
     // Structured Meta-compliant AI generation response
     const generatedCopy = `Hello *{{1}}*! Welcome to *${businessName || 'iBloom Store'}*. To celebrate our ${occasion || 'Product Launch'}, we are giving you an exclusive *20% discount*! Use promo code *SAVE20* at checkout.`;
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       template: {
         category: 'MARKETING',
         bodyText: generatedCopy,
@@ -26,6 +25,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'AI Generation Exception' }, { status: 500 });
+    return apiException(err, 'AI Generation Exception');
   }
 }

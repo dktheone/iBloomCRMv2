@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { logMetaGraphApiCall } from '@/lib/meta/logger';
 import { evaluatePhoneLineEligibility } from '@/lib/meta/eligibility-rulebook';
 import { evaluateAssetLifecycle, AssetLifecycleStatus } from '@/lib/meta/asset-lifecycle';
+import { fetchMasterTenant, resolveMasterTenantId } from '@/lib/supabase/tenant';
 
 const GRAPH_API_BASE = `https://graph.facebook.com/${PLATFORM_CONFIG.metaApiVersion}`;
 
@@ -178,16 +179,7 @@ export async function upsertWabaAssetToDb(
   const supabaseAdmin = createAdminClient();
 
   try {
-    let targetTenantId = tenantId;
-    const { data: realTenant } = await supabaseAdmin
-      .from('tenants')
-      .select('tenant_uid')
-      .eq('is_master_agency', true)
-      .limit(1);
-
-    if (realTenant && realTenant.length > 0) {
-      targetTenantId = realTenant[0].tenant_uid;
-    }
+    const targetTenantId = await resolveMasterTenantId(supabaseAdmin, 'tenant_uid', tenantId);
 
     let wabaName = waba.name;
     let wabaCurrency = waba.currency;
@@ -251,16 +243,7 @@ export async function upsertPhoneAssetToDb(
   if (!phoneMetaId || !phone.waba_id) return null;
 
   try {
-    let targetTenantId = tenantId;
-    const { data: realTenant } = await supabaseAdmin
-      .from('tenants')
-      .select('tenant_uid')
-      .eq('is_master_agency', true)
-      .limit(1);
-
-    if (realTenant && realTenant.length > 0) {
-      targetTenantId = realTenant[0].tenant_uid;
-    }
+    const targetTenantId = await resolveMasterTenantId(supabaseAdmin, 'tenant_uid', tenantId);
 
     // Resolve Parent WABA UUID
     let parentWabaUuid = phone.waba_id;
@@ -612,18 +595,14 @@ export async function persistEnrolledOnboardingAssets(payload: {
 
   try {
     // 1. Resolve or Create Master Agency Tenant in public.tenants
-    const { data: existingTenants } = await supabaseAdmin
-      .from('tenants')
-      .select('tenant_uid, slug')
-      .eq('is_master_agency', true)
-      .limit(1);
+    const existingTenant = await fetchMasterTenant(supabaseAdmin, 'tenant_uid, slug');
 
     let tenantZeroId = PLATFORM_CONFIG.tenantZeroId;
     let tenantSlug = PLATFORM_CONFIG.masterAgencySlug;
 
-    if (existingTenants && existingTenants.length > 0) {
-      tenantZeroId = existingTenants[0].tenant_uid;
-      tenantSlug = existingTenants[0].slug || PLATFORM_CONFIG.masterAgencySlug;
+    if (existingTenant) {
+      tenantZeroId = existingTenant.tenant_uid;
+      tenantSlug = existingTenant.slug || PLATFORM_CONFIG.masterAgencySlug;
     }
 
     const tenantPayload = {

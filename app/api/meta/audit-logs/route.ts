@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { apiException, apiSuccess } from '@/lib/api/response';
+import { getPaginationParams } from '@/lib/api/request';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,13 +21,11 @@ export async function GET(request: Request) {
     const endDate = searchParams.get('endDate');
     const eventType = searchParams.get('eventType');
     const searchQuery = (searchParams.get('search') || '').toLowerCase().trim();
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const { page, limit } = getPaginationParams(searchParams, 50);
 
     const logsDir = path.join(process.cwd(), 'storage', 'logs', 'audit');
     if (!fs.existsSync(logsDir)) {
-      return NextResponse.json({
-        success: true,
+      return apiSuccess({
         logs: [],
         total: 0,
         page,
@@ -76,8 +75,7 @@ export async function GET(request: Request) {
     const startIndex = (page - 1) * limit;
     const paginatedLogs = allRecords.slice(startIndex, startIndex + limit);
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       timestamp: new Date().toISOString(),
       logs: paginatedLogs,
       total,
@@ -86,10 +84,6 @@ export async function GET(request: Request) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (err: any) {
-    console.error('[Audit Logs API Error]:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Error fetching audit logs' },
-      { status: 500 }
-    );
+    return apiException(err, 'Error fetching audit logs', 500, '[Audit Logs API Error]');
   }
 }

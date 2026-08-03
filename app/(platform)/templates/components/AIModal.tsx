@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
+import { apiPost } from '@/lib/api/http';
 
 interface AIModalProps {
   isOpen: boolean;
@@ -37,22 +38,17 @@ export default function AIModal({ isOpen, onClose, onApplyGenerated }: AIModalPr
 
     setIsGenerating(true);
     try {
-      const res = await fetch('/api/meta/generate-template-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          businessName,
-          language,
-          industry,
-          occasion,
-          purpose,
-          action,
-          tone,
-          additionalNotes,
-        }),
+      const data = await apiPost('/api/meta/generate-template-ai', {
+        businessName,
+        language,
+        industry,
+        occasion,
+        purpose,
+        action,
+        tone,
+        additionalNotes,
       });
 
-      const data = await res.json();
       if (data.success && data.template) {
         onApplyGenerated(data.template);
         toast.success('AI Template Generated!', {

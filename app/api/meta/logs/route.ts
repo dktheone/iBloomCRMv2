@@ -1,27 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getMetaGraphLogs, clearMetaGraphLogs } from '@/lib/meta/logger';
+import { apiException, apiSuccess } from '@/lib/api/response';
+import { getPaginationParams } from '@/lib/api/request';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '15', 10);
+    const { page, limit } = getPaginationParams(searchParams, 15);
     const method = searchParams.get('method') || 'ALL';
     const status = searchParams.get('status') || 'ALL';
     const search = searchParams.get('search') || '';
 
     const result = getMetaGraphLogs({ page, limit, method, status, search });
-    return NextResponse.json({ success: true, ...result, isLoggingActive: true });
+    return apiSuccess({ ...result, isLoggingActive: true });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Error reading Graph API logs' }, { status: 500 });
+    return apiException(err, 'Error reading Graph API logs');
   }
 }
 
 export async function DELETE() {
   try {
     clearMetaGraphLogs();
-    return NextResponse.json({ success: true, message: 'Meta Graph API log history cleared.' });
+    return apiSuccess({ message: 'Meta Graph API log history cleared.' });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message || 'Error clearing logs' }, { status: 500 });
+    return apiException(err, 'Error clearing logs');
   }
 }
