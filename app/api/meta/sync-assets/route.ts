@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchMetaWabaAssets } from '@/lib/meta/graph-client';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { getOrSetCache } from '@/lib/redis/client';
+import { requireApiUser } from '@/lib/auth/guard';
 
 /**
  * GET /api/meta/sync-assets
@@ -9,6 +10,9 @@ import { getOrSetCache } from '@/lib/redis/client';
  * CRITICAL RULE: DOES NOT AUTO-INSERT OR AUTO-UPSERT PHONE LINES INTO DATABASE WITHOUT EXPLICIT USER ACTION.
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const forceRefresh = searchParams.get('force') === 'true';

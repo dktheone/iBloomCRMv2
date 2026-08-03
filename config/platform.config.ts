@@ -8,16 +8,20 @@
 export const PLATFORM_CONFIG = {
   // Meta Tech Provider App Specs & Versioning
   metaApiVersion: process.env.NEXT_PUBLIC_META_API_VERSION || 'v25.0',
-  metaAppId: process.env.NEXT_PUBLIC_META_APP_ID || '794921202917198',
-  metaAppSecret: process.env.NEXT_PUBLIC_META_APP_SECRET || '79a77d445a3b4e9bd7bbcb1417fea39a',
+  metaAppId: process.env.NEXT_PUBLIC_META_APP_ID || '',
+  // SECURITY: App Secret is a server-only secret and must NEVER be exposed via a
+  // NEXT_PUBLIC_ variable (those are inlined into the client bundle). Source it
+  // from a server-only env var and never hardcode a fallback value.
+  metaAppSecret: process.env.META_APP_SECRET || '',
   metaAppName: process.env.NEXT_PUBLIC_META_APP_NAME || 'ibloom_connect',
-  metaBusinessPortfolioId: process.env.NEXT_PUBLIC_META_BUSINESS_PORTFOLIO_ID || '1304712777970662',
+  metaBusinessPortfolioId: process.env.NEXT_PUBLIC_META_BUSINESS_PORTFOLIO_ID || '',
   appMode: (process.env.NEXT_PUBLIC_META_APP_MODE || 'dev') as 'live' | 'dev',
   
   // Permanent System User / WhatsApp Access Token
   systemUserAccessToken: process.env.NEXT_META_WHATSAPP_ACCESS_TOKEN || '',
-  webhookCallbackUrl: process.env.NEXT_PUBLIC_WEBHOOK_URL || 'https://api.ibloom.connect/api/webhooks/meta',
-  webhookVerifyToken: process.env.NEXT_META_WHATSAPP_WEBHOOK_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN || 'ibloom-secret-8822',
+  webhookCallbackUrl: process.env.NEXT_PUBLIC_WEBHOOK_URL || '',
+  // SECURITY: Webhook verify token is a shared secret — never hardcode a fallback.
+  webhookVerifyToken: process.env.NEXT_META_WHATSAPP_WEBHOOK_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN || '',
 
   // Master Agency & Tenant Zero Invariants
   tenantZeroId: process.env.NEXT_PUBLIC_TENANT_ZERO_ID || '00000000-0000-0000-0000-000000000000',
@@ -28,5 +32,6 @@ export const PLATFORM_CONFIG = {
   superAdminId: process.env.NEXT_PUBLIC_SUPER_ADMIN_ID || '11111111-1111-1111-1111-111111111111',
   superAdminEmail: process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'crm@ibloomsolutions.com',
   superAdminName: process.env.NEXT_PUBLIC_SUPER_ADMIN_NAME || 'Master Super Admin',
-  superAdminPassword: process.env.NEXT_PUBLIC_SUPER_ADMIN_PASSWORD || 'ChangeMe123!',
+  // SECURITY: never hardcode a default admin password.
+  superAdminPassword: process.env.SUPER_ADMIN_PASSWORD || '',
 };

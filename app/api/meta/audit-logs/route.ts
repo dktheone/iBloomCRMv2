@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,9 @@ export const dynamic = 'force-dynamic';
  * - pagination (page, limit)
  */
 export async function GET(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');

@@ -3,8 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { recordAuditEvent } from '@/lib/security/audit-engine';
 import { fetchWabaMessageTemplates, upsertWabaAssetToDb } from '@/lib/meta/graph-client';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export async function GET(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
@@ -78,9 +82,23 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const supabaseAdmin = createAdminClient();
     const body = await request.json();
+
+    // SECURITY: waba_id is interpolated into a PostgREST `.or()` filter string
+    // below. Reject any value containing characters that could break out of the
+    // filter (commas, parentheses, dots, etc.). Legitimate values are numeric
+    // Meta WABA IDs or UUIDs.
+    if (
+      body.waba_id !== undefined &&
+      (typeof body.waba_id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(body.waba_id))
+    ) {
+      return NextResponse.json({ success: false, error: 'Invalid waba_id format.' }, { status: 400 });
+    }
 
     // Check for Batch Save ("Save All Discovered Templates")
     if (Array.isArray(body.batchTemplates) && body.waba_id) {
@@ -223,6 +241,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);

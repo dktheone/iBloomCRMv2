@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMetaGraphLogs, clearMetaGraphLogs } from '@/lib/meta/logger';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export async function GET(req: NextRequest) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -18,6 +22,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE() {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     clearMetaGraphLogs();
     return NextResponse.json({ success: true, message: 'Meta Graph API log history cleared.' });

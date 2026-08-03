@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchMetaWabaAssets } from '@/lib/meta/graph-client';
 import { evaluatePhoneLineEligibility } from '@/lib/meta/eligibility-rulebook';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export async function GET() {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const supabaseAdmin = createAdminClient();
 

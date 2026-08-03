@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,9 @@ export const dynamic = 'force-dynamic';
  * Uses Service Role / Admin context to bypass client-side RLS blocks while serving the active Master Agency session.
  */
 export async function GET() {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const supabaseAdmin = createAdminClient();
 

@@ -4,8 +4,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { getOrSetCache } from '@/lib/redis/client';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const forceRefresh = searchParams.get('force') === 'true';
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest) {
         appName: PLATFORM_CONFIG.metaAppName,
         appMode: PLATFORM_CONFIG.appMode,
         webhookUrl: PLATFORM_CONFIG.webhookCallbackUrl,
-        verifyToken: PLATFORM_CONFIG.webhookVerifyToken,
+        // NOTE: webhook verify token is a secret and is intentionally NOT returned in the API response.
       },
       connectionTest: result,
     });

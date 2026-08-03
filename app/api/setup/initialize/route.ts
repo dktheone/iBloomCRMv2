@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { setupWizardSchema } from '@/lib/validations/schemas';
 import { logValidationFailure } from '@/lib/security/audit-logger';
+import { allowBootstrapOrRequireUser } from '@/lib/auth/guard';
 
 export async function GET() {
   try {
@@ -27,6 +28,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // SECURITY: allow only during first-run bootstrap; once the Master Agency
+  // exists, re-initialization (which resets the super admin password) requires
+  // an authenticated session.
+  const gate = await allowBootstrapOrRequireUser();
+  if (gate.response) return gate.response;
+
   try {
     const body = await request.json();
 

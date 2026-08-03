@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   const supabaseAdmin = createAdminClient();
 
   // Test selecting or inserting lifecycle_status and is_locked on wa_phone_numbers

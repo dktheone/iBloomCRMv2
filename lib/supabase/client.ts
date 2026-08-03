@@ -1,7 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr';
 
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bibbpavwvarzljqqwcef.supabase.co';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
   // Clean up any trailing whitespace or accidental quotes

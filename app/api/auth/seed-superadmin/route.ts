@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
+import { requireApiUser } from '@/lib/auth/guard';
 
+// SECURITY: This endpoint provisions/resets the super admin account using the
+// service-role key. Previously it was an unauthenticated GET that accepted an
+// attacker-chosen password via query string and echoed the credentials back —
+// a full account-takeover backdoor. It now (1) requires an authenticated
+// session, (2) sources the password from a server-only env var instead of the
+// query string, and (3) never returns credentials in the response.
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const passParam = searchParams.get('password') || 'MasterAdmin@2026!';
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
+  const passParam = PLATFORM_CONFIG.superAdminPassword;
+  if (!passParam) {
+    return NextResponse.json(
+      { status: 'CONFIG_ERROR', message: 'SUPER_ADMIN_PASSWORD is not configured on the server.' },
+      { status: 500 }
+    );
+  }
   const targetEmail = PLATFORM_CONFIG.superAdminEmail;
   const tenantZeroId = PLATFORM_CONFIG.tenantZeroId;
 
@@ -100,10 +115,6 @@ export async function GET(request: Request) {
       status: 'SUCCESS',
       message: `Super Admin (${targetEmail}) successfully provisioned and verified!`,
       userId: authUserId,
-      loginCredentials: {
-        email: targetEmail,
-        password: passParam,
-      },
     });
 
   } catch (error: any) {
