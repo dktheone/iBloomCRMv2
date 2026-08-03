@@ -1,7 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { fetchJson, getErrorMessage } from '@/lib/http/fetch-json';
 
 export interface OperationalLine {
   phone_line_uid?: string;
@@ -50,8 +52,7 @@ export function WabaProvider({ children }: { children: React.ReactNode }) {
   async function fetchOperationalLines() {
     setIsLoadingLines(true);
     try {
-      const res = await fetch('/api/meta/enrolled-assets');
-      const data = await res.json();
+      const data = await fetchJson<any>('/api/meta/enrolled-assets');
 
       let lines: OperationalLine[] = [];
       let wabasMap: Record<string, { waba_id?: string; meta_waba_id?: string; waba_uid?: string; name: string }> = {};
@@ -86,10 +87,15 @@ export function WabaProvider({ children }: { children: React.ReactNode }) {
             };
           });
       } else {
-        const { data: dbPhones } = await supabase
+        const { data: dbPhones, error: dbError } = await supabase
           .from('wa_phone_numbers')
           .select('*, wabas(waba_uid, meta_waba_id, waba_id, name)')
           .eq('lifecycle_status', 'LIVE_OPERATIONAL');
+
+        if (dbError) {
+          throw new Error(dbError.message);
+        }
+
         if (dbPhones) {
           lines = dbPhones.map((p: any) => {
             const mPhoneId = p.meta_phone_number_id || p.phone_number_id;
@@ -125,8 +131,11 @@ export function WabaProvider({ children }: { children: React.ReactNode }) {
       } else if (lines.length > 0) {
         setActiveLineState(lines[0]);
       }
-    } catch (err) {
-      console.error('Error loading operational WABA context lines:', err);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Could not load operational WhatsApp lines.');
+      console.error('[WabaContext] Error loading operational lines:', err);
+      setOperationalLines([]);
+      toast.error('Failed to load operational lines', { description: message });
     } finally {
       setIsLoadingLines(false);
     }

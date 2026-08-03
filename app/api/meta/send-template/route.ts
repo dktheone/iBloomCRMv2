@@ -57,13 +57,16 @@ export async function POST(request: Request) {
     const data = await res.json();
 
     if (!res.ok || data.error) {
-      return NextResponse.json({
-        success: false,
-        error: data.error?.message || `Meta API returned ${res.status}`,
-        errorCode: data.error?.code,
-        errorType: data.error?.type,
-        metaResponse: data,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: data.error?.message || `Meta API returned ${res.status}`,
+          errorCode: data.error?.code,
+          errorType: data.error?.type,
+          metaResponse: data,
+        },
+        { status: res.ok ? 502 : res.status }
+      );
     }
 
     return NextResponse.json({

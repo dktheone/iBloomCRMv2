@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { fetchJson, getErrorMessage } from '@/lib/http/fetch-json';
 import { useWabaContext, OperationalLine } from '@/lib/context/waba-context';
 import ExploreSidebar from './components/ExploreSidebar';
 import PhoneSimulator from './components/PhoneSimulator';
@@ -86,8 +87,7 @@ export default function TemplatesPage() {
     setIsLoadingTemplates(true);
     try {
       const targetWabaId = activeLine.official_waba_id || activeLine.waba_id;
-      const res = await fetch(`/api/meta/templates?waba_id=${targetWabaId}`);
-      const data = await res.json();
+      const data = await fetchJson<any>(`/api/meta/templates?waba_id=${targetWabaId}`);
 
       if (data.success) {
         const disc = (data.discoveredTemplates || []).map((t: any) => normalizeTemplateRecord(t, targetWabaId));
@@ -105,11 +105,13 @@ export default function TemplatesPage() {
       } else {
         setDiscoveredTemplates([]);
         setDatabaseTemplates([]);
+        toast.error('Failed to load templates', { description: data.error || 'Template sync returned an unsuccessful response.' });
       }
-    } catch (err) {
-      console.error('Error loading templates:', err);
+    } catch (err: unknown) {
+      console.error('[Templates] Error loading templates:', err);
       setDiscoveredTemplates([]);
       setDatabaseTemplates([]);
+      toast.error('Failed to load templates', { description: getErrorMessage(err, 'Could not reach the template sync API.') });
     } finally {
       setIsLoadingTemplates(false);
     }

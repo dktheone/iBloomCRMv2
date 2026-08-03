@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { ApiRequestError, fetchJson, getErrorMessage } from '@/lib/http/fetch-json';
 import { 
   Send, 
   Smartphone, 
@@ -119,7 +121,11 @@ export default function ValidationBroadcastPage() {
     async function loadPhoneNumbers() {
       setIsLoading(true);
       try {
-        const { data: phoneData } = await supabase.from('wa_phone_numbers').select('*');
+        const { data: phoneData, error: phoneError } = await supabase.from('wa_phone_numbers').select('*');
+
+        if (phoneError) {
+          throw new Error(phoneError.message);
+        }
 
         const lockedPhones = (phoneData || []).filter(
           (p: any) => p.is_locked === true || p.lifecycle_status === 'LIVE_OPERATIONAL' || p.lifecycle_status === 'LOCKED'
@@ -133,8 +139,10 @@ export default function ValidationBroadcastPage() {
           setTestNumbers([]);
           setSelectedNumber('');
         }
-      } catch (err) {
-        console.error('Error loading phone numbers:', err);
+      } catch (err: unknown) {
+        const message = getErrorMessage(err, 'Failed to load operational phone lines.');
+        console.error('[Validation] Error loading phone numbers:', err);
+        toast.error('Failed to load phone lines', { description: message });
       } finally {
         setIsLoading(false);
       }
@@ -157,7 +165,12 @@ export default function ValidationBroadcastPage() {
       let query = supabase.from('wa_templates').select('*');
       if (wabaUid) query = query.eq('waba_uid', wabaUid);
 
-      const { data: tmplData } = await query;
+      const { data: tmplData, error: templateError } = await query;
+
+      if (templateError) {
+        throw new Error(templateError.message);
+      }
+
       const templates = (tmplData || []).filter(
         (t: any) => t.is_locked === true || t.local_staging_status === 'LOCKED' || t.status === 'APPROVED'
       );
@@ -170,8 +183,12 @@ export default function ValidationBroadcastPage() {
         setSelectedTemplate('');
         setTemplateParams({});
       }
-    } catch (err) {
-      console.error('Error loading templates:', err);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Failed to load templates for the selected line.');
+      console.error('[Validation] Error loading templates:', err);
+      toast.error('Failed to load templates', { description: message });
+      setApprovedTemplates([]);
+      setSelectedTemplate('');
     } finally {
       setIsLoadingTemplates(false);
     }
@@ -259,7 +276,7 @@ export default function ValidationBroadcastPage() {
     setLogs((prev) => [pendingLog, ...prev]);
 
     try {
-      const res = await fetch('/api/meta/send-template', {
+      const data = await fetchJson<any>('/api/meta/send-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -271,7 +288,6 @@ export default function ValidationBroadcastPage() {
         }),
       });
 
-      const data = await res.json();
       const finalLog: EventLog = {
         ...pendingLog,
         status: data.success ? 'DELIVERED' : 'FAILED',
@@ -280,8 +296,14 @@ export default function ValidationBroadcastPage() {
         metaResponse:  data.metaResponse,
       };
       setLogs((prev) => [finalLog, ...prev.filter(l => l.id !== pendingLog.id)]);
-    } catch (err: any) {
-      setLogs((prev) => [{ ...pendingLog, status: 'FAILED', errorMessage: err?.message || 'Network error' }, ...prev.filter(l => l.id !== pendingLog.id)]);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Network error dispatching template to Meta.');
+      const metaResponse = err instanceof ApiRequestError ? (err.payload as any)?.metaResponse : undefined;
+      toast.error('Dispatch failed', { description: message });
+      setLogs((prev) => [
+        { ...pendingLog, status: 'FAILED', errorMessage: message, metaResponse },
+        ...prev.filter(l => l.id !== pendingLog.id),
+      ]);
     } finally {
       setIsSending(false);
     }

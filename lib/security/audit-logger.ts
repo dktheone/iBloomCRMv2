@@ -15,7 +15,7 @@ export async function logValidationFailure({
 }) {
   try {
     const supabaseAdmin = createAdminClient();
-    await supabaseAdmin.from('validation_audit_logs').insert({
+    const { error } = await supabaseAdmin.from('validation_audit_logs').insert({
       form_surface: formSurface,
       rejected_field: rejectedField,
       failure_reason: failureReason,
@@ -23,7 +23,11 @@ export async function logValidationFailure({
       user_agent: userAgent || 'Unknown Browser',
       created_at: new Date().toISOString(),
     });
+
+    if (error) {
+      console.error('[Validation Audit Logger] Failed to persist validation failure:', error.message);
+    }
   } catch (err) {
-    console.warn('[Validation Audit Logger Notice]:', err);
+    console.error('[Validation Audit Logger] Exception writing validation failure:', err);
   }
 }

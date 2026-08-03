@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { fetchJson, getErrorMessage } from '@/lib/http/fetch-json';
 import { FormField } from '@/components/ui/FormField';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
@@ -76,8 +77,7 @@ export default function SetupWizardPage() {
   useEffect(() => {
     async function checkSetupState() {
       try {
-        const res = await fetch('/api/setup/initialize');
-        const data = await res.json();
+        const data = await fetchJson<any>('/api/setup/initialize');
         if (data.isInitialized && data.masterAgency) {
           setIsAlreadyInitialized(true);
           setProvisionResult({
@@ -85,8 +85,10 @@ export default function SetupWizardPage() {
             superAdmin: { email: PLATFORM_CONFIG.superAdminEmail, name: PLATFORM_CONFIG.superAdminName, phone: '+919876543210' }
           });
         }
-      } catch (err) {
-        console.warn('Setup state check notice:', err);
+      } catch (err: unknown) {
+        const message = getErrorMessage(err, 'Could not read the current Master Agency setup state.');
+        console.error('[Setup] Setup state check failed:', err);
+        toast.error('Setup state check failed', { description: message });
       }
     }
     checkSetupState();
@@ -145,8 +147,10 @@ export default function SetupWizardPage() {
 
       toast.success('Launching Dashboard...', { description: 'Authenticated with GoTrue Session.' });
       window.location.href = targetUrl;
-    } catch (err: any) {
-      console.warn('Auto-login fallback:', err);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Automatic sign-in failed. Please log in manually.');
+      console.error('[Setup] Auto-login failed:', err);
+      toast.error('Automatic sign-in failed', { description: message });
       window.location.href = '/login';
     }
   }

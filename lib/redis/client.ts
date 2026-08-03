@@ -28,15 +28,20 @@ try {
     console.log('[Redis] Connected to Local Redis Gateway on 127.0.0.1:6379');
   });
 
-  redisClient.on('error', () => {
+  redisClient.on('error', (err) => {
+    if (isRedisAvailable) {
+      console.warn('[Redis] Connection lost, falling back to in-memory LRU cache:', err?.message);
+    }
     isRedisAvailable = false;
   });
 
-  redisClient.connect().catch(() => {
+  redisClient.connect().catch((err) => {
     isRedisAvailable = false;
+    console.warn('[Redis] Unavailable, using in-memory LRU cache instead:', err?.message);
   });
-} catch {
+} catch (err) {
   isRedisAvailable = false;
+  console.warn('[Redis] Client initialization failed, using in-memory LRU cache instead:', err);
 }
 
 /**
@@ -56,8 +61,8 @@ export async function getOrSetCache<T>(
         if (cachedRaw) {
           return JSON.parse(cachedRaw) as T;
         }
-      } catch {
-        // Fallthrough to LRU
+      } catch (err) {
+        console.warn(`[Redis] Read failed for key "${key}", falling back to LRU cache:`, err);
       }
     }
 
@@ -79,7 +84,9 @@ export async function getOrSetCache<T>(
     if (isRedisAvailable && redisClient) {
       try {
         await redisClient.set(key, JSON.stringify(freshData), 'EX', ttlSeconds);
-      } catch {}
+      } catch (err) {
+        console.warn(`[Redis] Write failed for key "${key}":`, err);
+      }
     }
   }
 
@@ -94,6 +101,8 @@ export async function invalidateCacheKey(key: string) {
   if (isRedisAvailable && redisClient) {
     try {
       await redisClient.del(key);
-    } catch {}
+    } catch (err) {
+      console.warn(`[Redis] Invalidation failed for key "${key}":`, err);
+    }
   }
 }
