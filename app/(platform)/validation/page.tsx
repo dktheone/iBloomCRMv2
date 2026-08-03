@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { apiPost } from '@/lib/api/http';
 import { 
   Send, 
   Smartphone, 
@@ -259,19 +260,14 @@ export default function ValidationBroadcastPage() {
     setLogs((prev) => [pendingLog, ...prev]);
 
     try {
-      const res = await fetch('/api/meta/send-template', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone_number_id: phoneId,
-          recipient_phone: recipientPhone,
-          template_name: templateName,
-          language: templateLang,
-          components: paramComponents.length > 0 ? paramComponents : undefined,
-        }),
+      const data = await apiPost('/api/meta/send-template', {
+        phone_number_id: phoneId,
+        recipient_phone: recipientPhone,
+        template_name: templateName,
+        language: templateLang,
+        components: paramComponents.length > 0 ? paramComponents : undefined,
       });
 
-      const data = await res.json();
       const finalLog: EventLog = {
         ...pendingLog,
         status: data.success ? 'DELIVERED' : 'FAILED',

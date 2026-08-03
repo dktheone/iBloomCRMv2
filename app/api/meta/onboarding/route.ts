@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiError, apiSuccess } from '@/lib/api/response';
 import { 
   resolveMetaBusinessPortfolio, 
   discoverBusinessWabaAccounts, 
@@ -20,7 +21,7 @@ export async function GET(request: Request) {
     
     if (step === '2') {
       if (!businessId) {
-        return NextResponse.json({ success: false, error: 'business_id is required for step 2' }, { status: 400 });
+        return apiError('business_id is required for step 2', 400);
       }
       const res = await discoverBusinessWabaAccounts(businessId);
       return NextResponse.json(res);
@@ -28,15 +29,15 @@ export async function GET(request: Request) {
     
     if (step === '3') {
       if (!wabaId) {
-        return NextResponse.json({ success: false, error: 'waba_id is required for step 3' }, { status: 400 });
+        return apiError('waba_id is required for step 3', 400);
       }
       const res = await discoverWabaPhoneNumbers(wabaId);
       return NextResponse.json(res);
     }
 
-    return NextResponse.json({ success: false, error: 'Invalid onboarding step' }, { status: 400 });
+    return apiError('Invalid onboarding step', 400);
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error?.message || 'Error during onboarding step' }, { status: 500 });
+    return apiError(error?.message || 'Error during onboarding step');
   }
 }
 
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     } = body;
 
     if (!business_id || !wabas || !phoneNumbers) {
-      return NextResponse.json({ success: false, error: 'Missing required onboarding payload parameters' }, { status: 400 });
+      return apiError('Missing required onboarding payload parameters', 400);
     }
 
     const res = await persistEnrolledOnboardingAssets({ 
@@ -70,14 +71,13 @@ export async function POST(request: Request) {
     });
 
     if (res.success) {
-      return NextResponse.json({
-        success: true,
+      return apiSuccess({
         message: `Successfully enrolled ${wabas.length} WABA(s) and ${phoneNumbers.length} phone line(s) into Master Agency DB!`,
       });
     }
 
-    return NextResponse.json({ success: false, error: res.error || 'Failed to save enrolled assets.' }, { status: 500 });
+    return apiError(res.error || 'Failed to save enrolled assets.');
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error?.message || 'Error persisting onboarding assets.' }, { status: 500 });
+    return apiError(error?.message || 'Error persisting onboarding assets.');
   }
 }

@@ -5,13 +5,15 @@ import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 
 export default function ProviderConfigPage() {
   const supabase = createClient();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [copiedUrl, setCopiedUrl] = useState(false);
+  const { copy, isCopied } = useCopyToClipboard();
+  const copiedUrl = isCopied('webhook-callback-url');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -92,12 +94,7 @@ export default function ProviderConfigPage() {
   }
 
   function handleCopyWebhookUrl() {
-    navigator.clipboard.writeText(webhookCallbackUrl);
-    setCopiedUrl(true);
-    toast.success('Webhook Callback URL copied to clipboard!', {
-      icon: <Icon icon="solar:copy-bold-duotone" className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />,
-    });
-    setTimeout(() => setCopiedUrl(false), 2000);
+    copy(webhookCallbackUrl, 'webhook-callback-url', 'Webhook Callback URL copied to clipboard!');
   }
 
   return (

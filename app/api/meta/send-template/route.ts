@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
+import { apiError, apiException, apiSuccess } from '@/lib/api/response';
 
 const GRAPH_API_BASE = `https://graph.facebook.com/${PLATFORM_CONFIG.metaApiVersion}`;
 
@@ -9,18 +9,12 @@ export async function POST(request: Request) {
     const { phone_number_id, recipient_phone, template_name, language, access_token } = body;
 
     if (!phone_number_id || !recipient_phone || !template_name) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields: phone_number_id, recipient_phone, template_name' },
-        { status: 400 }
-      );
+      return apiError('Missing required fields: phone_number_id, recipient_phone, template_name', 400);
     }
 
     const token = access_token || PLATFORM_CONFIG.systemUserAccessToken;
     if (!token) {
-      return NextResponse.json(
-        { success: false, error: 'Access token not configured. Check PLATFORM_CONFIG.systemUserAccessToken.' },
-        { status: 401 }
-      );
+      return apiError('Access token not configured. Check PLATFORM_CONFIG.systemUserAccessToken.', 401);
     }
 
     const cleanedRecipient = recipient_phone.replace(/\s+/g, '').replace(/^\+/, '');
@@ -57,25 +51,19 @@ export async function POST(request: Request) {
     const data = await res.json();
 
     if (!res.ok || data.error) {
-      return NextResponse.json({
-        success: false,
-        error: data.error?.message || `Meta API returned ${res.status}`,
+      return apiError(data.error?.message || `Meta API returned ${res.status}`, 200, {
         errorCode: data.error?.code,
         errorType: data.error?.type,
         metaResponse: data,
       });
     }
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       metaMessageId: data.messages?.[0]?.id || null,
       contactWaId: data.contacts?.[0]?.wa_id || null,
       metaResponse: data,
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Server Exception' },
-      { status: 500 }
-    );
+    return apiException(err);
   }
 }

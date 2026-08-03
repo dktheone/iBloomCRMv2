@@ -10,6 +10,7 @@ import { PhoneInput } from '@/components/ui/PhoneInput';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { setupWizardSchema } from '@/lib/validations/schemas';
 import { evaluatePhoneLineEligibility } from '@/lib/meta/eligibility-rulebook';
+import { apiGet, apiPost } from '@/lib/api/http';
 
 interface DiscoveredWaba {
   waba_id: string;
@@ -76,8 +77,7 @@ export default function SetupWizardPage() {
   useEffect(() => {
     async function checkSetupState() {
       try {
-        const res = await fetch('/api/setup/initialize');
-        const data = await res.json();
+        const data = await apiGet('/api/setup/initialize');
         if (data.isInitialized && data.masterAgency) {
           setIsAlreadyInitialized(true);
           setProvisionResult({
@@ -160,8 +160,7 @@ export default function SetupWizardPage() {
     setCode200Detected(false);
 
     try {
-      const res = await fetch('/api/meta/onboarding?step=1');
-      const data = await res.json();
+      const data = await apiGet('/api/meta/onboarding?step=1');
 
       if (data.errorCode200Detected) {
         setCode200Detected(true);
@@ -193,8 +192,7 @@ export default function SetupWizardPage() {
   async function handleStep2FetchWabas(bizId: string) {
     setFetchingWabas(true);
     try {
-      const res = await fetch(`/api/meta/onboarding?step=2&business_id=${encodeURIComponent(bizId)}`);
-      const data = await res.json();
+      const data = await apiGet(`/api/meta/onboarding?step=2&business_id=${encodeURIComponent(bizId)}`);
       if (data.success && data.wabas) {
         setDiscoveredWabas(data.wabas);
         setSelectedWabaIds(data.wabas.map((w: DiscoveredWaba) => w.waba_id));
@@ -220,8 +218,7 @@ export default function SetupWizardPage() {
     try {
       const allPhones: DiscoveredPhone[] = [];
       for (const wabaId of selectedWabaIds) {
-        const res = await fetch(`/api/meta/onboarding?step=3&waba_id=${encodeURIComponent(wabaId)}`);
-        const data = await res.json();
+        const data = await apiGet(`/api/meta/onboarding?step=3&waba_id=${encodeURIComponent(wabaId)}`);
         if (data.success && data.phoneNumbers) {
           allPhones.push(...data.phoneNumbers);
         }
@@ -245,22 +242,16 @@ export default function SetupWizardPage() {
       const selectedWabaObjects = discoveredWabas.filter((w) => selectedWabaIds.includes(w.waba_id));
       const selectedPhoneObjects = discoveredPhones.filter((p) => selectedPhoneIds.includes(p.id));
 
-      const res = await fetch('/api/meta/onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          masterAgencyName,
-          superAdminName,
-          superAdminEmail,
-          superAdminPhone,
-          password,
-          business_id: businessPortfolio?.business_id || PLATFORM_CONFIG.metaBusinessPortfolioId,
-          wabas: selectedWabaObjects,
-          phoneNumbers: selectedPhoneObjects,
-        }),
+      const data = await apiPost('/api/meta/onboarding', {
+        masterAgencyName,
+        superAdminName,
+        superAdminEmail,
+        superAdminPhone,
+        password,
+        business_id: businessPortfolio?.business_id || PLATFORM_CONFIG.metaBusinessPortfolioId,
+        wabas: selectedWabaObjects,
+        phoneNumbers: selectedPhoneObjects,
       });
-
-      const data = await res.json();
 
       if (data.success) {
         setProvisionResult(data);

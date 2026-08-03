@@ -1,8 +1,9 @@
 import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env';
 
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bibbpavwvarzljqqwcef.supabase.co';
-  let anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  const supabaseUrl = getSupabaseUrl();
+  let anonKey = getSupabaseAnonKey();
 
   // Clean up any trailing whitespace or accidental quotes
   anonKey = anonKey.trim().replace(/^["']|["']$/g, '');

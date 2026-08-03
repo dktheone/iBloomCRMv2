@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchMetaWabaAssets } from '@/lib/meta/graph-client';
 import { evaluatePhoneLineEligibility } from '@/lib/meta/eligibility-rulebook';
+import { apiError, apiException, apiSuccess } from '@/lib/api/response';
+import { resolveMetaPhoneId, resolveMetaWabaId } from '@/lib/meta/asset-normalizers';
 
 export async function GET() {
   try {
@@ -11,16 +12,14 @@ export async function GET() {
     const { data: dbWabas } = await supabaseAdmin.from('wabas').select('meta_waba_id, waba_uid');
     const { data: dbPhones } = await supabaseAdmin.from('wa_phone_numbers').select('meta_phone_number_id, phone_line_uid');
 
-    const enrolledWabaIds = new Set((dbWabas || []).map((w: any) => w.meta_waba_id || w.waba_id || w.waba_uid));
-    const enrolledPhoneIds = new Set((dbPhones || []).map((p: any) => p.meta_phone_number_id || p.phone_number_id || p.phone_line_uid));
+    const enrolledWabaIds = new Set((dbWabas || []).map(resolveMetaWabaId));
+    const enrolledPhoneIds = new Set((dbPhones || []).map(resolveMetaPhoneId));
 
     // 2. Fetch live assets from Meta Graph API
     const liveMetaAssets = await fetchMetaWabaAssets();
 
     if (!liveMetaAssets.success) {
-      return NextResponse.json({
-        success: false,
-        error: liveMetaAssets.error || 'Failed to fetch live Meta assets.',
+      return apiError(liveMetaAssets.error || 'Failed to fetch live Meta assets.', 200, {
         unregisteredWabas: [],
         unregisteredPhones: [],
       });
@@ -50,8 +49,7 @@ export async function GET() {
         };
       });
 
-    return NextResponse.json({
-      success: true,
+    return apiSuccess({
       unregisteredWabaCount: unregisteredWabas.length,
       unregisteredPhoneCount: unregisteredPhones.length,
       unregisteredWabas,
@@ -60,9 +58,6 @@ export async function GET() {
       totalLivePhones: liveMetaAssets.phoneNumbers.length,
     });
   } catch (err: any) {
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Error checking unregistered assets' },
-      { status: 500 }
-    );
+    return apiException(err, 'Error checking unregistered assets');
   }
 }

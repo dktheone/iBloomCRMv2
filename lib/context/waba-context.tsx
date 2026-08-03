@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { apiGet } from '@/lib/api/http';
 
 export interface OperationalLine {
   phone_line_uid?: string;
@@ -50,8 +51,7 @@ export function WabaProvider({ children }: { children: React.ReactNode }) {
   async function fetchOperationalLines() {
     setIsLoadingLines(true);
     try {
-      const res = await fetch('/api/meta/enrolled-assets');
-      const data = await res.json();
+      const data = await apiGet('/api/meta/enrolled-assets');
 
       let lines: OperationalLine[] = [];
       let wabasMap: Record<string, { waba_id?: string; meta_waba_id?: string; waba_uid?: string; name: string }> = {};
