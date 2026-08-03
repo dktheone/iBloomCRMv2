@@ -37,6 +37,7 @@ export async function GET(request: Request) {
 
     const files = fs.readdirSync(logsDir).filter((f) => f.endsWith('.jsonl') || f.endsWith('.parquet'));
     let allRecords: any[] = [];
+    let malformedLineCount = 0;
 
     for (const file of files) {
       const fileDate = file.replace('.jsonl', '').replace('.parquet', '');
@@ -62,8 +63,9 @@ export async function GET(request: Request) {
             }
 
             allRecords.push(record);
-          } catch (e) {
-            // Ignore malformed lines
+          } catch (parseErr) {
+            malformedLineCount += 1;
+            console.warn(`[Audit Logs] Skipping malformed JSONL line in ${file}:`, parseErr);
           }
         }
       }
@@ -84,6 +86,7 @@ export async function GET(request: Request) {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      malformedLineCount,
     });
   } catch (err: any) {
     console.error('[Audit Logs API Error]:', err);

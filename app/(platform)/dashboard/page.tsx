@@ -6,6 +6,7 @@ import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { fetchJson, getErrorMessage } from '@/lib/http/fetch-json';
 import { useSession } from '@/components/providers/SessionProvider';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 
@@ -43,14 +44,11 @@ export default function DashboardPage() {
   const {
     data: metaApiData,
     isLoading: isMetaTesting,
+    error: metaApiError,
     refetch: refetchMetaConnection,
   } = useQuery({
     queryKey: ['meta-connection-test'],
-    queryFn: async () => {
-      const res = await fetch('/api/meta/test-connection');
-      const data = await res.json();
-      return data;
-    },
+    queryFn: () => fetchJson('/api/meta/test-connection'),
     staleTime: 1000 * 60 * 5, // 5 minutes stale time
   });
 
@@ -58,16 +56,26 @@ export default function DashboardPage() {
   const {
     data: unregisteredData,
     isLoading: isCheckingUnregistered,
+    error: unregisteredError,
     refetch: refetchUnregistered,
   } = useQuery({
     queryKey: ['meta-unregistered-assets'],
-    queryFn: async () => {
-      const res = await fetch('/api/meta/unregistered-assets');
-      const data = await res.json();
-      return data;
-    },
+    queryFn: () => fetchJson('/api/meta/unregistered-assets'),
     staleTime: 1000 * 60 * 5, // 5 minutes stale time
   });
+
+  useEffect(() => {
+    if (metaApiError) {
+      toast.error('Meta connection check failed', {
+        description: getErrorMessage(metaApiError, 'Could not reach /api/meta/test-connection.'),
+      });
+    }
+    if (unregisteredError) {
+      toast.error('Unregistered asset discovery failed', {
+        description: getErrorMessage(unregisteredError, 'Could not reach /api/meta/unregistered-assets.'),
+      });
+    }
+  }, [metaApiError, unregisteredError]);
 
   const connectionTest = metaApiData?.connectionTest;
   const isMetaSuccess = Boolean(connectionTest?.success);
@@ -78,8 +86,7 @@ export default function DashboardPage() {
   async function handleManualTestConnection() {
     toast.info('Testing Meta Graph API Connection...');
     try {
-      const res = await fetch('/api/meta/test-connection?force=true');
-      const data = await res.json();
+      const data = await fetchJson<any>('/api/meta/test-connection?force=true');
       if (data.connectionTest?.success) {
         toast.success('Meta Connection Verified!', {
           description: `Connected to ${data.connectionTest.appName || PLATFORM_CONFIG.metaAppName}.`,
@@ -89,15 +96,15 @@ export default function DashboardPage() {
       }
       refetchMetaConnection();
       refetchUnregistered();
-    } catch (err: any) {
-      toast.error('Network Error', { description: err?.message });
+    } catch (err: unknown) {
+      toast.error('Network Error', { description: getErrorMessage(err, 'Failed to test Meta Graph API connection.') });
     }
   }
 
   async function handleRegisterUnregisteredPhone(phone: any) {
     setRegisteringPhoneId(phone.id);
     try {
-      const res = await fetch('/api/meta/enroll-phone', {
+      const data = await fetchJson<any>('/api/meta/enroll-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,7 +118,6 @@ export default function DashboardPage() {
         }),
       });
 
-      const data = await res.json();
       if (data.success) {
         toast.success(`Registered & Locked line ${phone.display_phone_number} to Tenant Zero DB!`, {
           icon: <Icon icon="solar:check-circle-bold" className="w-5 h-5 text-emerald-500" />,
@@ -121,8 +127,8 @@ export default function DashboardPage() {
       } else {
         toast.error('Registration Failed', { description: data.error });
       }
-    } catch (err: any) {
-      toast.error('Registration Exception', { description: err?.message });
+    } catch (err: unknown) {
+      toast.error('Registration Exception', { description: getErrorMessage(err, 'Failed to register phone line.') });
     } finally {
       setRegisteringPhoneId(null);
     }
@@ -130,10 +136,22 @@ export default function DashboardPage() {
 
   async function loadDashboardMetrics() {
     try {
-      const { data: providerData } = await supabase.from('provider_config').select('*').limit(1);
-      const { data: wabaData } = await supabase.from('wabas').select('waba_uid, meta_waba_id');
-      const { data: phoneData } = await supabase.from('wa_phone_numbers').select('phone_line_uid, meta_phone_number_id, is_test_number');
-      const { data: tmplData } = await supabase.from('wa_templates').select('template_uid, meta_template_id');
+      const [providerResult, wabaResult, phoneResult, templateResult] = await Promise.all([
+        supabase.from('provider_config').select('*').limit(1),
+        supabase.from('wabas').select('waba_uid, meta_waba_id'),
+        supabase.from('wa_phone_numbers').select('phone_line_uid, meta_phone_number_id, is_test_number'),
+        supabase.from('wa_templates').select('template_uid, meta_template_id'),
+      ]);
+
+      const queryError = providerResult.error || wabaResult.error || phoneResult.error || templateResult.error;
+      if (queryError) {
+        throw new Error(queryError.message);
+      }
+
+      const providerData = providerResult.data;
+      const wabaData = wabaResult.data;
+      const phoneData = phoneResult.data;
+      const tmplData = templateResult.data;
 
       const isConfigured = Boolean(providerData && providerData.length > 0);
       const config = isConfigured && providerData ? providerData[0] : null;
@@ -154,8 +172,10 @@ export default function DashboardPage() {
         templatesCount,
         lifecycleStatus: tenantProfile?.status || 'active',
       }));
-    } catch (err) {
-      console.error('Error loading dashboard metrics:', err);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err, 'Failed to load dashboard metrics from Supabase.');
+      console.error('[Dashboard] Error loading metrics:', err);
+      toast.error('Failed to load dashboard metrics', { description: message });
     }
   }
 

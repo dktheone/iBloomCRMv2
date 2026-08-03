@@ -35,15 +35,20 @@ export default function ProviderConfigPage() {
         const { data, error } = await supabase.from('provider_config').select('*').limit(1);
 
         if (error) {
-          console.warn('[ProviderConfig] Supabase fetch warning:', error.message);
-        } else if (data && data.length > 0) {
+          throw new Error(error.message);
+        }
+
+        if (data && data.length > 0) {
           const config = data[0];
           setMetaAppId(config.meta_app_id || PLATFORM_CONFIG.metaAppId);
           setAppMode(config.app_mode || PLATFORM_CONFIG.appMode);
           setAppCategory(config.app_category || 'Tech Provider / Business Management CRM');
         }
       } catch (err: any) {
-        console.error('Error loading provider config:', err);
+        const msg = err?.message || 'Failed to load provider configuration from Supabase.';
+        console.error('[ProviderConfig] Error loading provider config:', err);
+        setErrorMessage(msg);
+        toast.error('Failed to load provider config', { description: msg });
       } finally {
         setIsLoading(false);
       }

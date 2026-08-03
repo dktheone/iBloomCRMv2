@@ -5,6 +5,7 @@ import { Icon } from '@iconify/react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { fetchJson, getErrorMessage } from '@/lib/http/fetch-json';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 import { evaluateAssetLifecycle } from '@/lib/meta/asset-lifecycle';
 import { detectMetaStatusDrift } from '@/lib/meta/status-drift';
@@ -62,16 +63,20 @@ export default function AssetsPage() {
   const {
     data: assetsData,
     isLoading: isSyncing,
+    error: assetsError,
     refetch: refetchAssets,
   } = useQuery({
     queryKey: ['meta-discovered-assets'],
-    queryFn: async () => {
-      const res = await fetch('/api/meta/sync-assets');
-      const data = await res.json();
-      return data;
-    },
+    queryFn: () => fetchJson('/api/meta/sync-assets'),
     staleTime: 1000 * 60 * 5,
   });
+
+  useEffect(() => {
+    if (!assetsError) return;
+    toast.error('Failed to load Meta assets', {
+      description: getErrorMessage(assetsError, 'Could not reach /api/meta/sync-assets.'),
+    });
+  }, [assetsError]);
 
   const discoveredWabas: WabaRecord[] = assetsData?.wabas || [];
   const discoveredPhones: PhoneRecord[] = assetsData?.phoneNumbers || [];
@@ -80,8 +85,7 @@ export default function AssetsPage() {
   async function handleManualSyncAssets() {
     toast.info('Fetching Live Assets from Meta API...');
     try {
-      const res = await fetch('/api/meta/sync-assets?force=true');
-      const data = await res.json();
+      const data = await fetchJson<any>('/api/meta/sync-assets?force=true');
       if (data.success) {
         toast.success('Live Assets Synced from Meta API!', {
           description: `Discovered ${data.wabaCount || 0} WABA(s) and ${data.phoneCount || 0} line(s).`,
@@ -91,28 +95,42 @@ export default function AssetsPage() {
       }
       refetchAssets();
       await loadEnrolledAssetsFromSupabase();
-    } catch (err: any) {
-      toast.error('Network Error', { description: err?.message });
+    } catch (err: unknown) {
+      toast.error('Network Error', { description: getErrorMessage(err, 'Failed to sync assets from Meta.') });
     }
   }
 
   async function loadEnrolledAssetsFromSupabase() {
     try {
-      const res = await fetch('/api/meta/enrolled-assets');
-      const data = await res.json();
+      const data = await fetchJson<any>('/api/meta/enrolled-assets');
 
       if (data.success) {
         if (data.enrolledPhones) setDbEnrolledPhones(data.enrolledPhones);
         if (data.enrolledWabas) setDbEnrolledWabas(data.enrolledWabas);
-      } else {
-        const { data: phoneData } = await supabase.from('wa_phone_numbers').select('*');
-        const { data: wabaData } = await supabase.from('wabas').select('*');
-        if (phoneData) setDbEnrolledPhones(phoneData);
-        if (wabaData) setDbEnrolledWabas(wabaData);
+        return;
       }
-    } catch (err) {
-      console.error('Error loading enrolled assets from Supabase API:', err);
+
+      await loadEnrolledAssetsDirectFromDb(data.error);
+    } catch (err: unknown) {
+      await loadEnrolledAssetsDirectFromDb(getErrorMessage(err, 'Enrolled assets API request failed.'));
     }
+  }
+
+  async function loadEnrolledAssetsDirectFromDb(apiErrorMessage?: string) {
+    const { data: phoneData, error: phoneError } = await supabase.from('wa_phone_numbers').select('*');
+    const { data: wabaData, error: wabaError } = await supabase.from('wabas').select('*');
+
+    const dbError = phoneError || wabaError;
+    if (dbError) {
+      console.error('[Assets] Enrolled asset fallback query failed:', dbError);
+      toast.error('Failed to load enrolled assets', {
+        description: apiErrorMessage ? `${apiErrorMessage} Fallback query also failed: ${dbError.message}` : dbError.message,
+      });
+      return;
+    }
+
+    if (phoneData) setDbEnrolledPhones(phoneData);
+    if (wabaData) setDbEnrolledWabas(wabaData);
   }
 
   async function handleEnrollPhoneAsset(
@@ -128,7 +146,7 @@ export default function AssetsPage() {
     }
 
     try {
-      const res = await fetch('/api/meta/enroll-phone', {
+      const data = await fetchJson<any>('/api/meta/enroll-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -142,8 +160,6 @@ export default function AssetsPage() {
           action,
         }),
       });
-
-      const data = await res.json();
 
       if (data.success) {
         const actionLabel =
@@ -163,8 +179,8 @@ export default function AssetsPage() {
       } else {
         toast.error('Action Failed', { description: data.error || 'Could not update phone line status.' });
       }
-    } catch (err: any) {
-      toast.error('Exception', { description: err?.message || 'Failed to update phone line status.' });
+    } catch (err: unknown) {
+      toast.error('Exception', { description: getErrorMessage(err, 'Failed to update phone line status.') });
     } finally {
       setEnrollingPhoneId(null);
       setUnenrollingPhoneId(null);
