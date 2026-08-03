@@ -5,8 +5,12 @@ import { enrollPhoneSchema } from '@/lib/validations/schemas';
 import { logValidationFailure } from '@/lib/security/audit-logger';
 import { upsertPhoneAssetToDb, upsertWabaAssetToDb } from '@/lib/meta/graph-client';
 import { recordAuditEvent } from '@/lib/security/audit-engine';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export async function POST(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const body = await request.json();
 
@@ -186,6 +190,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const phoneNumberId = searchParams.get('phone_number_id');

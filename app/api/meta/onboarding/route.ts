@@ -5,8 +5,12 @@ import {
   discoverWabaPhoneNumbers, 
   persistEnrolledOnboardingAssets 
 } from '@/lib/meta/graph-client';
+import { allowBootstrapOrRequireUser } from '@/lib/auth/guard';
 
 export async function GET(request: Request) {
+  const gate = await allowBootstrapOrRequireUser();
+  if (gate.response) return gate.response;
+
   const { searchParams } = new URL(request.url);
   const step = searchParams.get('step') || '1';
   const businessId = searchParams.get('business_id');
@@ -41,6 +45,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const gate = await allowBootstrapOrRequireUser();
+  if (gate.response) return gate.response;
+
   try {
     const body = await request.json();
     const { 

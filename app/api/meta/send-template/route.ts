@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
+import { requireApiUser } from '@/lib/auth/guard';
 
 const GRAPH_API_BASE = `https://graph.facebook.com/${PLATFORM_CONFIG.metaApiVersion}`;
 
 export async function POST(request: Request) {
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
   try {
     const body = await request.json();
     const { phone_number_id, recipient_phone, template_name, language, access_token } = body;

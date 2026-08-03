@@ -10,12 +10,28 @@ interface PhoneSimulatorProps {
 }
 
 export default function PhoneSimulator({ template, variables = [] }: PhoneSimulatorProps) {
+  // SECURITY: the result of this function is injected via dangerouslySetInnerHTML,
+  // so all user/template-derived text (body text and variable example values) must
+  // be HTML-escaped BEFORE any markup is added. Otherwise a template body such as
+  // `<img src=x onerror=alert(1)>` would execute as stored XSS in the preview.
+  function escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   // Parse Markdown formatting (*bold*, _italic_, ~strikethrough~, `code`)
   function formatWhatsAppText(text: string) {
     if (!text) return '';
 
+    // Escape first so no raw HTML from the template ever reaches the DOM.
+    const escaped = escapeHtml(text);
+
     // Replace {{1}}, {{2}}, or {{parameter_name}} with variable examples or fallbacks
-    let substituted = text.replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
+    let substituted = escaped.replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
       const rawKey = p1.trim();
       const numericIdx = parseInt(rawKey, 10);
       const matchedVar = variables.find((v) => 
@@ -24,16 +40,16 @@ export default function PhoneSimulator({ template, variables = [] }: PhoneSimula
         (v.index !== undefined && v.index.toString() === rawKey)
       );
       return matchedVar && matchedVar.exampleValue && matchedVar.exampleValue.trim()
-        ? matchedVar.exampleValue
+        ? escapeHtml(matchedVar.exampleValue)
         : `[${match}]`;
     });
 
-    // Formatting regexes
+    // Formatting regexes (operate on already-escaped, safe text)
     substituted = substituted
       .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
       .replace(/_(.*?)_/g, '<em>$1</em>')
       .replace(/~(.*?)~/g, '<del>$1</del>')
-      .replace(/`(.*?)`/g, '<code className="bg-slate-200 dark:bg-slate-800 px-1 rounded">$1</code>');
+      .replace(/`(.*?)`/g, '<code class="bg-slate-200 dark:bg-slate-800 px-1 rounded">$1</code>');
 
     return substituted;
   }

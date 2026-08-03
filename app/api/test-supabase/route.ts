@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireApiUser } from '@/lib/auth/guard';
 
 export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bibbpavwvarzljqqwcef.supabase.co';
+  const auth = await requireApiUser();
+  if (auth.response) return auth.response;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
   try {
@@ -20,7 +24,7 @@ export async function GET() {
         connected: true,
         httpStatus: response.status,
         projectUrl: supabaseUrl,
-        message: 'Successfully reached Supabase project endpoint (bibbpavwvarzljqqwcef)! Ready for SQL migrations.',
+        message: 'Successfully reached the configured Supabase project endpoint! Ready for SQL migrations.',
       });
     }
 
