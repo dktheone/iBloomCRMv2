@@ -7,23 +7,31 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
  * Computes dynamic Webhook Callback URL based on env (NEXT_PUBLIC_WEBHOOK_URL or NEXT_PUBLIC_APP_URL).
+ * Bulletproof sanitization: prevents duplicate /meta/meta or singular /api/webhook paths.
  */
 function getDynamicWebhookUrl(provider: string): string {
   const envWebhookUrl = process.env.NEXT_PUBLIC_WEBHOOK_URL;
   const envAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  if (envWebhookUrl) {
-    const cleanBase = envWebhookUrl.replace(/\/+$/, '');
-    // Normalize singular /api/webhook to plural /api/webhooks
-    const normalizedBase = cleanBase.replace(/\/api\/webhook$/, '/api/webhooks');
-    if (normalizedBase.endsWith('/api/webhooks')) {
-      return `${normalizedBase}/${provider}`;
-    }
-    return `${normalizedBase}/${provider}`;
+  let baseUrl = envWebhookUrl || `${envAppUrl.replace(/\/+$/, '')}/api/webhooks`;
+  baseUrl = baseUrl.replace(/\/+$/, '');
+
+  // 1. If baseUrl already ends with /provider (e.g. /webhooks/meta), return as-is
+  if (baseUrl.endsWith(`/${provider}`)) {
+    return baseUrl;
   }
 
-  const cleanAppUrl = envAppUrl.replace(/\/+$/, '');
-  return `${cleanAppUrl}/api/webhooks/${provider}`;
+  // 2. Normalize singular /api/webhook to plural /api/webhooks
+  if (baseUrl.endsWith('/api/webhook')) {
+    baseUrl = baseUrl.replace(/\/api\/webhook$/, '/api/webhooks');
+  }
+
+  // 3. Ensure path includes /api/webhooks
+  if (!baseUrl.endsWith('/api/webhooks') && !baseUrl.includes('/api/webhooks')) {
+    baseUrl = `${baseUrl}/api/webhooks`;
+  }
+
+  return `${baseUrl}/${provider}`;
 }
 
 /**
