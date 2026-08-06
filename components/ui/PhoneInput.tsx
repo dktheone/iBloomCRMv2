@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, Phone, ChevronDown, Check } from 'lucide-react';
+import { IndiaFlagSvg, NepalFlagSvg, UsFlagSvg } from './flags';
 
 interface PhoneInputProps {
   id?: string;
@@ -12,59 +13,12 @@ interface PhoneInputProps {
   error?: string;
   helperText?: string;
   required?: boolean;
+  disabled?: boolean;
 }
-
-// High-Definition SVG Flag Components to guarantee 100% crisp rendering across Windows, Mac, and Linux
-const IndiaFlagSvg = () => (
-  <svg className="w-5 h-3.5 rounded-xs shadow-xs object-cover border border-slate-200/80 dark:border-slate-700/80 shrink-0" viewBox="0 0 640 480">
-    <path fill="#f93" d="M0 0h640v160H0z"/>
-    <path fill="#fff" d="M0 160h640v160H0z"/>
-    <path fill="#128807" d="M0 320h640v160H0z"/>
-    <g transform="matrix(3.2 0 0 3.2 320 240)">
-      <circle r="20" fill="none" stroke="#008" strokeWidth="2"/>
-      <circle r="3" fill="#008"/>
-      <g id="d">
-        <g id="c">
-          <g id="b">
-            <line y2="-20" stroke="#008" strokeWidth="1"/>
-            <circle y="-17.5" r=".8" fill="#008"/>
-          </g>
-          <use href="#b" transform="rotate(15)"/>
-        </g>
-        <use href="#c" transform="rotate(30)"/>
-      </g>
-      <use href="#d" transform="rotate(60)"/>
-      <use href="#d" transform="rotate(120)"/>
-    </g>
-  </svg>
-);
-
-const UsFlagSvg = () => (
-  <svg className="w-5 h-3.5 rounded-xs shadow-xs object-cover border border-slate-200/80 dark:border-slate-700/80 shrink-0" viewBox="0 0 640 480">
-    <path fill="#bd3d44" d="M0 0h640v480H0z"/>
-    <path stroke="#fff" strokeWidth="37" d="M0 55.5h640M0 129.5h640M0 203.5h640M0 277.5h640M0 351.5h640M0 425.5h640"/>
-    <path fill="#192f5d" d="M0 0h288v258.5H0z"/>
-    <g fill="#fff">
-      <g id="us-s">
-        <g id="us-f">
-          <polygon points="12,0 15,9 24,9 17,14 19,23 12,18 5,23 7,14 0,9 9,9"/>
-        </g>
-        <use href="#us-f" x="48"/>
-        <use href="#us-f" x="96"/>
-        <use href="#us-f" x="144"/>
-        <use href="#us-f" x="192"/>
-        <use href="#us-f" x="240"/>
-      </g>
-      <use href="#us-s" y="48"/>
-      <use href="#us-s" y="96"/>
-      <use href="#us-s" y="144"/>
-      <use href="#us-s" y="192"/>
-    </g>
-  </svg>
-);
 
 export const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flagSvg: IndiaFlagSvg, name: 'India', placeholder: '98765 43210' },
+  { code: '+977', country: 'NP', flagSvg: NepalFlagSvg, name: 'Nepal', placeholder: '98 1234567' },
   { code: '+1', country: 'US', flagSvg: UsFlagSvg, name: 'United States', placeholder: '(202) 555-0123' },
 ];
 
@@ -77,6 +31,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   error,
   helperText,
   required = false,
+  disabled = false,
 }) => {
   const [selectedCountryCode, setSelectedCountryCode] = useState('+91');
   const [nationalNumber, setNationalNumber] = useState('');
@@ -104,12 +59,16 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       return;
     }
 
-    if (value.startsWith('+1')) {
-      setSelectedCountryCode('+1');
-      setNationalNumber(value.slice(2).replace(/\D/g, ''));
+    // Longest prefix first, so a new shorter code can never shadow a longer one
+    if (value.startsWith('+977')) {
+      setSelectedCountryCode('+977');
+      setNationalNumber(value.slice(4).replace(/\D/g, ''));
     } else if (value.startsWith('+91')) {
       setSelectedCountryCode('+91');
       setNationalNumber(value.slice(3).replace(/\D/g, ''));
+    } else if (value.startsWith('+1')) {
+      setSelectedCountryCode('+1');
+      setNationalNumber(value.slice(2).replace(/\D/g, ''));
     } else {
       const cleanDigits = value.replace(/\D/g, '');
       setNationalNumber(cleanDigits.length > 10 ? cleanDigits.slice(-10) : cleanDigits);
@@ -151,8 +110,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         {/* Custom Interactive Country Trigger Button */}
         <button
           type="button"
+          disabled={disabled}
           onClick={() => setIsOpen(!isOpen)}
-          className={`h-11 px-3 flex items-center gap-2 border-y border-l rounded-l-xl transition-all duration-200 shrink-0 cursor-pointer ${
+          className={`h-11 px-3 flex items-center gap-2 border-y border-l rounded-l-xl transition-all duration-200 shrink-0 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
             error
               ? 'bg-rose-100/80 dark:bg-rose-950/80 border-rose-500 text-rose-900 dark:text-rose-100 border-r-rose-300 dark:border-r-rose-800'
               : 'bg-slate-100/90 dark:bg-[#1E293B] border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 border-r-slate-300 dark:border-r-slate-700 hover:bg-slate-200/80 dark:hover:bg-slate-800'
@@ -175,10 +135,11 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           value={nationalNumber}
           onChange={handleNumberChange}
           onBlur={onBlur}
+          disabled={disabled}
           maxLength={10}
           placeholder={activeCountry.placeholder}
           aria-invalid={Boolean(error)}
-          className={`w-full h-11 pl-3.5 pr-9 py-2.5 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none rounded-r-xl border-y border-r transition-all duration-200 ${
+          className={`w-full h-11 pl-3.5 pr-9 py-2.5 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none rounded-r-xl border-y border-r transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed ${
             error
               ? 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-500 text-rose-900 dark:text-rose-100 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/15'
               : 'bg-white dark:bg-[#0F172A] border-slate-300 dark:border-slate-700 focus:border-cyan-600 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10'
@@ -191,7 +152,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       </div>
 
       {/* Floating Custom Country Selection Popover Menu */}
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-64 bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-150">
           <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100 dark:border-slate-700/60 mb-1">
             Select Country Code

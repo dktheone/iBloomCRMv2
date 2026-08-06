@@ -67,28 +67,36 @@ export async function POST(request: Request) {
     // 2. Query or Ensure Tenant Zero ID (is_master_agency = true)
     const { data: tenantData } = await supabaseAdmin
       .from('tenants')
-      .select('id')
+      .select('tenant_uid')
       .eq('is_master_agency', true)
       .limit(1);
 
-    const tenantId = tenantData && tenantData.length > 0 ? tenantData[0].id : PLATFORM_CONFIG.tenantZeroId;
+    const tenantId = tenantData && tenantData.length > 0 ? tenantData[0].tenant_uid : PLATFORM_CONFIG.tenantZeroId;
 
     // Handle DETACH action with SOFT DELETE (No Hard Deletes!)
     if (action === 'DETACH') {
-      const { data: updatedPhone, error: updateErr } = await supabaseAdmin
+      const isTargetUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetPhoneMetaId);
+      let detachQuery = supabaseAdmin
         .from('wa_phone_numbers')
         .update({
           lifecycle_status: 'UNLOCKED_STANDBY',
           is_locked: false,
           updated_at: new Date().toISOString(),
-        })
-        .eq('phone_number_id', targetPhoneMetaId)
-        .select()
-        .single();
+        });
+
+      if (isTargetUuid) {
+        detachQuery = detachQuery.eq('phone_line_uid', targetPhoneMetaId);
+      } else {
+        detachQuery = detachQuery.eq('meta_phone_number_id', targetPhoneMetaId);
+      }
+
+      const { data: updatedPhones, error: updateErr } = await detachQuery.select();
 
       if (updateErr) {
         return NextResponse.json({ success: false, error: updateErr.message }, { status: 500 });
       }
+
+      const updatedPhone = updatedPhones && updatedPhones.length > 0 ? updatedPhones[0] : null;
 
       // Record Audit Event in Option-1 Log Engine
       await recordAuditEvent({
@@ -197,15 +205,22 @@ export async function DELETE(request: Request) {
     const supabaseAdmin = createAdminClient();
     
     // SOFT DELETE: Update lifecycle_status = 'UNLOCKED_STANDBY', is_locked = false (NO HARD DELETE!)
-    const { data: updatedLine, error } = await supabaseAdmin
+    const isTargetUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(phoneNumberId);
+    let detachQuery = supabaseAdmin
       .from('wa_phone_numbers')
       .update({
         lifecycle_status: 'UNLOCKED_STANDBY',
         is_locked: false,
         updated_at: new Date().toISOString(),
-      })
-      .eq('phone_number_id', phoneNumberId)
-      .select();
+      });
+
+    if (isTargetUuid) {
+      detachQuery = detachQuery.eq('phone_line_uid', phoneNumberId);
+    } else {
+      detachQuery = detachQuery.eq('meta_phone_number_id', phoneNumberId);
+    }
+
+    const { data: updatedLine, error } = await detachQuery.select();
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });

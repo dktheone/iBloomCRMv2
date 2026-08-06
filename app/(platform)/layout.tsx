@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import MetaDebugBanner from '@/components/layout/MetaDebugBanner';
@@ -9,6 +10,9 @@ import { WabaProvider } from '@/lib/context/waba-context';
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const pathname = usePathname();
+
+  const isInbox = pathname === '/inbox' || pathname.startsWith('/inbox/');
 
   return (
     <WabaProvider>
@@ -34,14 +38,21 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
             setSidebarExpanded={setSidebarExpanded}
           />
 
-          {/* Main Content Area - ONLY THIS SCROLLS */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-            <div className="max-w-7xl mx-auto w-full space-y-6">
-              {children}
-            </div>
+          {/* Main Content Area */}
+          <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {isInbox ? (
+              children
+            ) : (
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
+                <div className="max-w-7xl mx-auto w-full space-y-6">
+                  {children}
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>
     </WabaProvider>
   );
 }
+

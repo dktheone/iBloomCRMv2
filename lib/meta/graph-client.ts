@@ -1057,3 +1057,179 @@ export async function fetchWabaMessageTemplates(
     return { success: false, templates: [], error: err?.message || 'Network exception fetching templates from Meta Graph API' };
   }
 }
+
+/**
+ * Create/Submit a Message Template to Meta Graph API
+ * Endpoint: POST /{waba_id}/message_templates
+ */
+export async function createWabaMessageTemplate(
+  wabaId: string,
+  template: {
+    name: string;
+    language?: string;
+    category?: string;
+    components?: any[];
+    header?: any;
+    body?: any;
+    footer?: any;
+    buttons?: any[];
+  },
+  accessToken?: string
+): Promise<{ success: boolean; id?: string; status?: string; category?: string; error?: string }> {
+  const token = accessToken || PLATFORM_CONFIG.systemUserAccessToken;
+  if (!token || !wabaId) {
+    return { success: false, error: 'WABA ID or System User Access Token missing.' };
+  }
+
+  try {
+    const endpoint = `${GRAPH_API_BASE}/${wabaId}/message_templates?access_token=${token}`;
+
+    let metaComponents: any[] = [];
+
+    if (Array.isArray(template.components) && template.components.length > 0) {
+      metaComponents = template.components;
+    } else {
+      // Build HEADER
+      if (template.header && template.header.type !== 'NONE') {
+        const headerFormat = template.header.type || 'TEXT';
+        if (headerFormat === 'TEXT' && template.header.textValue) {
+          metaComponents.push({
+            type: 'HEADER',
+            format: 'TEXT',
+            text: template.header.textValue,
+          });
+        } else if (headerFormat === 'LOCATION') {
+          metaComponents.push({
+            type: 'HEADER',
+            format: 'LOCATION',
+          });
+        } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerFormat)) {
+          const sampleUrl =
+            template.header.mediaUrl ||
+            (headerFormat === 'IMAGE'
+              ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'
+              : headerFormat === 'VIDEO'
+              ? 'https://www.w3schools.com/html/mov_bbb.mp4'
+              : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+
+          metaComponents.push({
+            type: 'HEADER',
+            format: headerFormat,
+            example: {
+              header_handle: [sampleUrl],
+            },
+          });
+        }
+      }
+
+      // Ensure all media HEADER components carry required example.header_handle
+      metaComponents = metaComponents.map((comp: any) => {
+        if (comp.type === 'HEADER' && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(comp.format)) {
+          if (!comp.example || !Array.isArray(comp.example.header_handle) || comp.example.header_handle.length === 0) {
+            const sampleUrl =
+              comp.media_url ||
+              template.header?.mediaUrl ||
+              (comp.format === 'IMAGE'
+                ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe'
+                : comp.format === 'VIDEO'
+                ? 'https://www.w3schools.com/html/mov_bbb.mp4'
+                : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+
+            return {
+              ...comp,
+              example: {
+                header_handle: [sampleUrl],
+              },
+            };
+          }
+        }
+        return comp;
+      });
+
+      // Build BODY
+      if (template.body && template.body.text) {
+        const bodyComp: any = {
+          type: 'BODY',
+          text: template.body.text,
+        };
+
+        if (Array.isArray(template.body.examples) && template.body.examples.length > 0) {
+          const sampleValues = template.body.examples.map((ex: any) => ex.exampleValue || `Value ${ex.index || 1}`);
+          bodyComp.example = {
+            body_text: [sampleValues],
+          };
+        }
+        metaComponents.push(bodyComp);
+      }
+
+      // Build FOOTER
+      if (template.footer && template.footer.text) {
+        metaComponents.push({
+          type: 'FOOTER',
+          text: template.footer.text,
+        });
+      }
+
+      // Build BUTTONS
+      if (Array.isArray(template.buttons) && template.buttons.length > 0) {
+        const formattedButtons = template.buttons.map((btn: any) => {
+          if (btn.type === 'URL') {
+            return {
+              type: 'URL',
+              text: btn.text || 'Visit Website',
+              url: btn.value || 'https://example.com',
+            };
+          }
+          if (btn.type === 'PHONE_NUMBER') {
+            return {
+              type: 'PHONE_NUMBER',
+              text: btn.text || 'Call Support',
+              phone_number: btn.value || '+1234567890',
+            };
+          }
+          return {
+            type: 'QUICK_REPLY',
+            text: btn.text || btn.value || 'Quick Reply',
+          };
+        });
+        metaComponents.push({
+          type: 'BUTTONS',
+          buttons: formattedButtons,
+        });
+      }
+    }
+
+    const payload = {
+      name: template.name.trim().toLowerCase().replace(/\s+/g, '_'),
+      language: template.language || 'en_US',
+      category: template.category || 'MARKETING',
+      components: metaComponents,
+    };
+
+    const res = await fetchWithMetaLogger(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      console.warn(`[createWabaMessageTemplate Meta Error]:`, data.error);
+      return {
+        success: false,
+        error: data.error.message || data.error.error_user_msg || 'Meta Graph API returned template creation error',
+      };
+    }
+
+    return {
+      success: true,
+      id: data.id,
+      status: data.status || 'PENDING',
+      category: data.category || template.category,
+    };
+  } catch (err: any) {
+    console.error('[createWabaMessageTemplate Exception]:', err?.message);
+    return { success: false, error: err?.message || 'Network exception creating template via Meta Graph API' };
+  }
+}

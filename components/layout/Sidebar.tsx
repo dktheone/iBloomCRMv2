@@ -27,24 +27,18 @@ export default function Sidebar({
     setActiveHref(pathname);
   }, [pathname]);
 
-  const mainNavItems = [
+  const messagingNavItems = [
     {
-      name: 'Master Dashboard',
-      href: '/dashboard',
-      icon: 'solar:chart-2-bold-duotone',
-      subtitle: 'Overview & Master Agency Status'
+      name: 'Inbox',
+      href: '/inbox',
+      icon: 'solar:chat-round-dots-bold-duotone',
+      subtitle: 'Conversations & Live Chat'
     },
     {
-      name: 'Provider Config',
-      href: '/provider',
-      icon: 'solar:settings-bold-duotone',
-      subtitle: 'Meta App Identity & Credentials'
-    },
-    {
-      name: 'Asset Hub & Numbers',
-      href: '/assets',
-      icon: 'solar:layers-bold-duotone',
-      subtitle: 'Testing & Business Lines'
+      name: 'Contacts Hub',
+      href: '/contacts',
+      icon: 'solar:users-group-two-rounded-bold-duotone',
+      subtitle: 'Audience & Contact Directory'
     },
     {
       name: 'Template Sync & Builder',
@@ -57,6 +51,33 @@ export default function Sidebar({
       href: '/validation',
       icon: 'solar:square-share-line-bold-duotone',
       subtitle: 'Live Test Send & Event Logs'
+    },
+  ];
+
+  const platformNavItems = [
+    {
+      name: 'Master Dashboard',
+      href: '/dashboard',
+      icon: 'solar:chart-2-bold-duotone',
+      subtitle: 'Overview & Master Agency Status'
+    },
+    {
+      name: 'Webhook Control Center',
+      href: '/webhooks',
+      icon: 'solar:shield-check-bold-duotone',
+      subtitle: 'Multi-Provider Webhook Manager'
+    },
+    {
+      name: 'Provider Config',
+      href: '/provider',
+      icon: 'solar:settings-bold-duotone',
+      subtitle: 'Meta App Identity & Credentials'
+    },
+    {
+      name: 'Asset Hub & Numbers',
+      href: '/assets',
+      icon: 'solar:layers-bold-duotone',
+      subtitle: 'Testing & Business Lines'
     },
     {
       name: 'Graph API Debug Logs',
@@ -121,25 +142,22 @@ export default function Sidebar({
 
         {/* 2. NAVIGATION MENU LIST */}
         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+
+          {/* Messaging Section */}
           <div className="space-y-1">
             {sidebarExpanded && (
-              <span className="text-[10px] font-mono text-slate-500 font-bold uppercase tracking-widest px-3 mb-2 block">
-                Master Navigation
+              <span className="text-[10px] font-mono text-cyan-500/70 font-bold uppercase tracking-widest px-3 mb-2 block">
+                Messaging
               </span>
             )}
-
-            {mainNavItems.map((item) => {
-              const isActive = activeHref === item.href || (item.href !== '/dashboard' && activeHref.startsWith(item.href));
-
+            {messagingNavItems.map((item) => {
+              const isActive = activeHref === item.href || activeHref.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   prefetch={true}
-                  onClick={() => {
-                    setActiveHref(item.href);
-                    setSidebarOpen(false);
-                  }}
+                  onClick={() => { setActiveHref(item.href); setSidebarOpen(false); }}
                   className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all duration-200 group ${
                     isActive
                       ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-extrabold shadow-lg shadow-cyan-900/30'
@@ -149,11 +167,51 @@ export default function Sidebar({
                 >
                   <Icon
                     icon={item.icon}
-                    className={`w-5.5 h-5.5 shrink-0 transition-transform group-hover:scale-110 ${
+                    className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
                       isActive ? 'text-white' : 'text-slate-400 group-hover:text-cyan-400'
                     }`}
                   />
+                  {sidebarExpanded && (
+                    <div className="flex flex-col truncate">
+                      <span className="text-xs font-bold tracking-tight truncate">{item.name}</span>
+                      <span className={`text-[10px] truncate ${isActive ? 'text-cyan-100' : 'text-slate-500 font-mono'}`}>
+                        {item.subtitle}
+                      </span>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
 
+          {/* Platform Section */}
+          <div className="space-y-1">
+            {sidebarExpanded && (
+              <span className="text-[10px] font-mono text-slate-500 font-bold uppercase tracking-widest px-3 mb-2 block">
+                Platform
+              </span>
+            )}
+            {platformNavItems.map((item) => {
+              const isActive = activeHref === item.href || (item.href !== '/dashboard' && activeHref.startsWith(item.href));
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={true}
+                  onClick={() => { setActiveHref(item.href); setSidebarOpen(false); }}
+                  className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-extrabold shadow-lg shadow-cyan-900/30'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                  }`}
+                  title={!sidebarExpanded ? item.name : undefined}
+                >
+                  <Icon
+                    icon={item.icon}
+                    className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
+                      isActive ? 'text-white' : 'text-slate-400 group-hover:text-cyan-400'
+                    }`}
+                  />
                   {sidebarExpanded && (
                     <div className="flex flex-col truncate">
                       <span className="text-xs font-bold tracking-tight truncate">{item.name}</span>

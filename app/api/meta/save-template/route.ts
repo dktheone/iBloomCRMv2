@@ -97,14 +97,21 @@ export async function DELETE(request: Request) {
     const supabaseAdmin = createAdminClient();
 
     // SOFT DELETE: Update status = 'DELETED' (NO HARD DELETE!)
-    const { data, error } = await supabaseAdmin
+    const isTargetUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateId);
+    let updateQuery = supabaseAdmin
       .from('wa_templates')
       .update({
         status: 'DELETED',
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', templateId)
-      .select();
+      });
+
+    if (isTargetUuid) {
+      updateQuery = updateQuery.eq('template_uid', templateId);
+    } else {
+      updateQuery = updateQuery.or(`meta_template_id.eq.${templateId},name.eq.${templateId}`);
+    }
+
+    const { data, error } = await updateQuery.select();
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });

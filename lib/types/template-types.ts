@@ -38,7 +38,7 @@ export interface WhatsAppTemplate {
   category: TemplateCategory;
   marketingSubtype?: MarketingSubtype;
   offerText?: string; // Max 60 chars (for LIMITED_TIME_OFFER)
-  status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'DRAFT';
+  status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'DRAFT' | 'DELETED_ON_META' | 'ARCHIVED';
   rejected_reason?: string;
   
   header?: {

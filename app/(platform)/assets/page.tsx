@@ -24,6 +24,8 @@ interface WabaRecord {
 interface PhoneRecord {
   id?: string;
   phone_number_id: string;
+  meta_phone_number_id?: string;
+  phone_line_uid?: string;
   waba_id: string;
   display_phone_number: string;
   verified_name: string;
@@ -120,7 +122,7 @@ export default function AssetsPage() {
     parentWaba?: WabaRecord,
     action: 'PROVISION' | 'LOCK_AND_ACTIVATE' | 'RE_ACTIVATE' | 'DETACH' = 'LOCK_AND_ACTIVATE'
   ) {
-    const targetId = phone.phone_number_id || phone.id || '';
+    const targetId = phone.meta_phone_number_id || phone.phone_line_uid || phone.phone_number_id || phone.id || '';
     if (action === 'DETACH') {
       setUnenrollingPhoneId(targetId);
     } else {

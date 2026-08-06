@@ -18,6 +18,7 @@ import {
   Zap,
   Info,
   Variable,
+  Users,
 } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import PhoneSimulator from '../templates/components/PhoneSimulator';
@@ -34,6 +35,32 @@ interface EventLog {
   metaMessageId: string | null;
   errorMessage?: string;
   metaResponse?: any;
+}
+
+/**
+ * A contact carrying the `admin` label — the only contacts this super-admin
+ * page offers as test recipients.
+ */
+interface AdminContact {
+  contact_uid: string;
+  name: string | null;
+  wa_phone: string;
+  opt_in_status: string;
+}
+
+/**
+ * Label whose members may receive validation test broadcasts. Matched
+ * case-insensitively against `labels.name`.
+ */
+const ADMIN_LABEL_NAME = 'admin';
+
+/**
+ * Contacts store E.164 digits without a leading `+`; the Meta send route and
+ * this form both expect the `+`. Normalise in one place.
+ */
+function toE164(waPhone: string): string {
+  const digits = (waPhone || '').replace(/[^\d]/g, '');
+  return digits ? `+${digits}` : '';
 }
 
 // Extract {{key}} variable keys from a text string (supports {{1}} and {{name}})
@@ -107,6 +134,9 @@ export default function ValidationBroadcastPage() {
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
 
   const [recipientPhone, setRecipientPhone] = useState('+919532358574');
+  const [adminContacts, setAdminContacts] = useState<AdminContact[]>([]);
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
+  const [isRecipientDropdownOpen, setIsRecipientDropdownOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [templateParams, setTemplateParams]     = useState<{ [key: string]: string }>({});
   const [isSending, setIsSending] = useState(false);
@@ -141,6 +171,54 @@ export default function ValidationBroadcastPage() {
     }
     loadPhoneNumbers();
   }, []);
+
+  /* ──────────────────────────────────────────────
+   * Load contacts carrying the `admin` label
+   *
+   * Resolved in three plain queries rather than one nested PostgREST filter:
+   * `contact_labels_active` is a view, so embedded-resource joins off it are
+   * not reliably inferable. RLS scopes every step to the caller's tenant.
+   * ────────────────────────────────────────────── */
+  const loadAdminContacts = useCallback(async () => {
+    setIsLoadingAdmins(true);
+    try {
+      const { data: labelRows, error: labelErr } = await supabase
+        .from('labels')
+        .select('label_uid')
+        .ilike('name', ADMIN_LABEL_NAME);
+
+      if (labelErr) throw labelErr;
+      const labelUids = (labelRows || []).map((l: any) => l.label_uid);
+      if (labelUids.length === 0) { setAdminContacts([]); return; }
+
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('contact_labels_active')
+        .select('contact_uid')
+        .in('label_uid', labelUids);
+
+      if (linkErr) throw linkErr;
+      const contactUids = [...new Set((linkRows || []).map((r: any) => r.contact_uid))];
+      if (contactUids.length === 0) { setAdminContacts([]); return; }
+
+      const { data: contactRows, error: contactErr } = await supabase
+        .from('contacts')
+        .select('contact_uid, name, wa_phone, opt_in_status')
+        .in('contact_uid', contactUids)
+        .order('name', { ascending: true });
+
+      if (contactErr) throw contactErr;
+      setAdminContacts((contactRows || []) as AdminContact[]);
+    } catch (err) {
+      console.error('Error loading admin-labelled contacts:', err);
+      setAdminContacts([]);
+    } finally {
+      setIsLoadingAdmins(false);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    loadAdminContacts();
+  }, [loadAdminContacts]);
 
   /* ──────────────────────────────────────────────
    * Load templates whenever selected phone changes
@@ -205,6 +283,11 @@ export default function ValidationBroadcastPage() {
     (t.template_uid || t.id || t.name) === selectedTemplate
   ) || approvedTemplates[0];
 
+  // Which admin contact (if any) the typed number currently corresponds to.
+  const matchedAdminContact = adminContacts.find(
+    (c) => toE164(c.wa_phone) === toE164(recipientPhone)
+  );
+
   // Variable keys in selected template (numeric or named)
   const variableKeys = selectedTemplateObj
     ? extractTemplateVariables(Array.isArray(selectedTemplateObj.components) ? selectedTemplateObj.components : [])
@@ -231,8 +314,74 @@ export default function ValidationBroadcastPage() {
     const templateName = selectedTemplateObj?.name || selectedTemplate;
     const templateLang = selectedTemplateObj?.language || 'en_US';
 
-    // Build parameter components for Meta API (supporting positional and named parameters)
+    // Build parameter components for Meta API (header & body parameters)
     const paramComponents: any[] = [];
+
+    // 1. Check if template has a HEADER component requiring parameters
+    const headerComp = Array.isArray(selectedTemplateObj?.components)
+      ? selectedTemplateObj.components.find((c: any) => c.type === 'HEADER')
+      : null;
+
+    if (headerComp && headerComp.format && headerComp.format !== 'TEXT' && headerComp.format !== 'NONE') {
+      const fmt = headerComp.format;
+      const mediaUrl = headerComp.media_url || headerComp.example?.header_handle?.[0];
+
+      if (fmt === 'IMAGE') {
+        paramComponents.push({
+          type: 'header',
+          parameters: [
+            {
+              type: 'image',
+              image: {
+                link: mediaUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe',
+              },
+            },
+          ],
+        });
+      } else if (fmt === 'VIDEO') {
+        paramComponents.push({
+          type: 'header',
+          parameters: [
+            {
+              type: 'video',
+              video: {
+                link: mediaUrl || 'https://www.w3schools.com/html/mov_bbb.mp4',
+              },
+            },
+          ],
+        });
+      } else if (fmt === 'DOCUMENT') {
+        paramComponents.push({
+          type: 'header',
+          parameters: [
+            {
+              type: 'document',
+              document: {
+                link: mediaUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                filename: 'invoice.pdf',
+              },
+            },
+          ],
+        });
+      } else if (fmt === 'LOCATION') {
+        paramComponents.push({
+          type: 'header',
+          parameters: [
+            {
+              type: 'location',
+              location: {
+                latitude: '28.6139',
+                longitude: '77.2090',
+                name: 'iBloom HQ',
+                address: 'New Delhi, India',
+              },
+            },
+          ],
+        });
+      }
+    }
+
+    // 2. Body parameters
     if (variableKeys.length > 0) {
       paramComponents.push({
         type: 'body',
@@ -350,7 +499,7 @@ export default function ValidationBroadcastPage() {
                 </label>
                 <div className="relative">
                   <div className="relative group">
-                    <button type="button" onClick={() => { setIsPhoneDropdownOpen(!isPhoneDropdownOpen); setIsTemplateDropdownOpen(false); }}
+                    <button type="button" onClick={() => { setIsPhoneDropdownOpen(!isPhoneDropdownOpen); setIsTemplateDropdownOpen(false); setIsRecipientDropdownOpen(false); }}
                       className="w-full bg-[#F8FAFC] dark:bg-[#121722] border border-[#E2E8F0] dark:border-[#2E3A47] hover:border-cyan-500/60 rounded-xl px-3.5 py-2.5 text-xs font-mono flex items-center justify-between gap-2 shadow-xs transition-all text-left">
                       <div className="flex items-center gap-2.5 truncate">
                         <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center shrink-0">
@@ -408,11 +557,117 @@ export default function ValidationBroadcastPage() {
                 </div>
               </div>
 
-              {/* ── Recipient Phone ── */}
+              {/* ── Recipient Phone (admin-labelled contacts + free entry) ── */}
               <div>
-                <label className="block text-xs font-semibold text-[#1C2434] dark:text-[#8A99AD] mb-1">Recipient Phone Number</label>
-                <input type="text" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="+919532358574"
-                  className="w-full bg-[#F8FAFC] dark:bg-[#121722] border border-[#E2E8F0] dark:border-[#2E3A47] rounded-xl px-3.5 py-2.5 text-xs font-mono text-cyan-600 dark:text-cyan-400 focus:outline-none focus:border-cyan-500/60" required />
+                <label className="flex items-center justify-between text-xs font-semibold text-[#1C2434] dark:text-[#8A99AD] mb-1.5">
+                  <span>Recipient Phone Number</span>
+                  {isLoadingAdmins ? (
+                    <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Loading...
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-300 dark:border-cyan-800">
+                      🏷️ {adminContacts.length} Admin Contact{adminContacts.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </label>
+
+                <div className="relative">
+                  <div className="flex items-stretch gap-2">
+                    <input
+                      type="text"
+                      value={recipientPhone}
+                      onChange={(e) => setRecipientPhone(e.target.value)}
+                      placeholder="+919532358574"
+                      className="flex-1 min-w-0 bg-[#F8FAFC] dark:bg-[#121722] border border-[#E2E8F0] dark:border-[#2E3A47] rounded-xl px-3.5 py-2.5 text-xs font-mono text-cyan-600 dark:text-cyan-400 focus:outline-none focus:border-cyan-500/60"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRecipientDropdownOpen(!isRecipientDropdownOpen);
+                        setIsPhoneDropdownOpen(false);
+                        setIsTemplateDropdownOpen(false);
+                      }}
+                      title="Pick an admin-labelled contact"
+                      className="shrink-0 px-3 bg-[#F8FAFC] dark:bg-[#121722] border border-[#E2E8F0] dark:border-[#2E3A47] hover:border-cyan-500/60 rounded-xl flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 transition-all"
+                    >
+                      <Users className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                      <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isRecipientDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Who the typed number resolves to, if anyone */}
+                  <div className="mt-1.5 text-[10px] font-mono">
+                    {matchedAdminContact ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        ✅ {matchedAdminContact.name || 'Unnamed'} · admin contact
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500">
+                        Manual number — not in the admin contact list
+                      </span>
+                    )}
+                  </div>
+
+                  {isRecipientDropdownOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-2 z-[999] bg-white dark:bg-[#121A2A] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-64 overflow-y-auto p-2 space-y-1.5">
+                      {isLoadingAdmins ? (
+                        <div className="p-4 text-center text-xs font-mono text-slate-400 flex items-center justify-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading admin contacts...
+                        </div>
+                      ) : adminContacts.length === 0 ? (
+                        <div className="p-3 text-[11px] font-mono text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-xl leading-relaxed">
+                          No contacts carry the <b>admin</b> label. Add the label to a contact in{' '}
+                          <b>Contacts</b>, then reopen this list. You can still type a number by hand.
+                        </div>
+                      ) : (
+                        adminContacts.map((c) => {
+                          const e164 = toE164(c.wa_phone);
+                          const isSelected = e164 === toE164(recipientPhone);
+                          return (
+                            <div
+                              key={c.contact_uid}
+                              onClick={() => { setRecipientPhone(e164); setIsRecipientDropdownOpen(false); }}
+                              className={`p-3 rounded-xl cursor-pointer transition-all border flex flex-col gap-1.5 ${isSelected ? 'bg-cyan-50/80 dark:bg-cyan-950/50 border-cyan-400 dark:border-cyan-700/80' : 'bg-slate-50/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800/60'}`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 truncate">
+                                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white font-bold text-[9px] grid place-items-center shrink-0">
+                                    {c.name ? c.name.slice(0, 2).toUpperCase() : '?'}
+                                  </div>
+                                  <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                    {c.name || 'Unnamed'}
+                                  </span>
+                                </div>
+                                {isSelected && (
+                                  <span className="shrink-0 text-[10px] font-bold font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-900/60 px-2 py-0.5 rounded-full border border-cyan-300 dark:border-cyan-700">
+                                    SELECTED
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap font-mono text-[10px]">
+                                <span className="px-2 py-0.5 rounded-md font-semibold bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800">
+                                  📱 {e164}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-md font-semibold border ${
+                                  c.opt_in_status === 'opted_in'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                    : c.opt_in_status === 'opted_out'
+                                    ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                                }`}>
+                                  {c.opt_in_status === 'opted_in' ? '✅' : c.opt_in_status === 'opted_out' ? '⛔' : '❔'}{' '}
+                                  {c.opt_in_status.toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* ── Template Selector ── */}
@@ -435,7 +690,7 @@ export default function ValidationBroadcastPage() {
                 ) : (
                   <div className="relative">
                     <div className="relative group">
-                      <button type="button" onClick={() => { setIsTemplateDropdownOpen(!isTemplateDropdownOpen); setIsPhoneDropdownOpen(false); }}
+                      <button type="button" onClick={() => { setIsTemplateDropdownOpen(!isTemplateDropdownOpen); setIsPhoneDropdownOpen(false); setIsRecipientDropdownOpen(false); }}
                         disabled={isLoadingTemplates}
                         className="w-full bg-[#F8FAFC] dark:bg-[#121722] border border-[#E2E8F0] dark:border-[#2E3A47] hover:border-violet-500/60 rounded-xl px-3.5 py-2.5 text-xs font-mono flex items-center justify-between gap-2 shadow-xs transition-all text-left disabled:opacity-60">
                         <div className="flex items-center gap-2.5 truncate">

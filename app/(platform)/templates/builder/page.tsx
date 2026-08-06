@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useWabaContext } from '@/lib/context/waba-context';
 import PhoneSimulator from '../components/PhoneSimulator';
 import AIModal from '../components/AIModal';
+import { createClient } from '@/lib/supabase/client';
 import {
   WhatsAppTemplate,
   TemplateCategory,
@@ -20,6 +21,7 @@ import {
 function TemplateBuilderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const supabase = createClient();
   const { activeLine } = useWabaContext();
 
   const editId = searchParams.get('id');
@@ -64,7 +66,64 @@ function TemplateBuilderContent() {
 
   // Load existing or cloned template data
   useEffect(() => {
-    if (cloneParam) {
+    async function loadTemplateForEdit() {
+      if (!editId) return;
+      try {
+        const { data: tmpl } = await supabase
+          .from('wa_templates')
+          .select('*')
+          .or(`template_uid.eq.${editId},meta_template_id.eq.${editId}`)
+          .maybeSingle();
+
+        if (tmpl) {
+          setTemplateName(tmpl.name || '');
+          setLanguage(tmpl.language || 'en_US');
+          setCategory(tmpl.category || 'MARKETING');
+          setMarketingSubtype(tmpl.marketing_subtype || 'STANDARD');
+          setOfferText(tmpl.offer_text || 'Limited Offer');
+
+          const components = Array.isArray(tmpl.components) ? tmpl.components : [];
+          const headerComp = components.find((c: any) => c.type === 'HEADER');
+          const bodyComp = components.find((c: any) => c.type === 'BODY');
+          const footerComp = components.find((c: any) => c.type === 'FOOTER');
+          const btnComp = components.find((c: any) => c.type === 'BUTTONS');
+
+          if (headerComp) {
+            setHeaderType(headerComp.format || 'TEXT');
+            setHeaderText(headerComp.text || '');
+            setMediaUrl(headerComp.media_url || '');
+          }
+
+          if (bodyComp) {
+            setBodyText(bodyComp.text || '');
+            if (bodyComp.examples) setVariables(bodyComp.examples);
+          } else if (tmpl.body_text) {
+            setBodyText(tmpl.body_text);
+          }
+
+          if (footerComp) {
+            setFooterText(footerComp.text || '');
+          }
+
+          if (btnComp && btnComp.buttons) {
+            setButtons(
+              btnComp.buttons.map((b: any, idx: number) => ({
+                id: b.id || `btn_${idx}_${Date.now()}`,
+                type: b.type || 'QUICK_REPLY',
+                text: b.text || '',
+                value: b.url || b.phone_number || b.value || '',
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        console.error('Error loading template for edit:', err);
+      }
+    }
+
+    if (editId) {
+      loadTemplateForEdit();
+    } else if (cloneParam) {
       try {
         const cloned: WhatsAppTemplate = JSON.parse(decodeURIComponent(cloneParam));
         setTemplateName(cloned.name || '');
@@ -78,12 +137,21 @@ function TemplateBuilderContent() {
         setBodyText(cloned.body?.text || '');
         if (cloned.body?.examples) setVariables(cloned.body.examples);
         setFooterText(cloned.footer?.text || '');
-        if (cloned.buttons) setButtons(cloned.buttons);
+        if (cloned.buttons) {
+          setButtons(
+            cloned.buttons.map((b: any, idx: number) => ({
+              id: b.id || `btn_${idx}_${Date.now()}`,
+              type: b.type || 'QUICK_REPLY',
+              text: b.text || '',
+              value: b.url || b.phone_number || b.value || '',
+            }))
+          );
+        }
       } catch (err) {
         console.error('Error parsing clone parameter:', err);
       }
     }
-  }, [cloneParam]);
+  }, [editId, cloneParam]);
 
   // Automated Variable Observer scanning {{n}} markers in body text
   useEffect(() => {
@@ -167,7 +235,7 @@ function TemplateBuilderContent() {
     setButtons(buttons.filter((b) => b.id !== id));
   }
 
-  async function handleSaveAndPublish(status: 'APPROVED' | 'DRAFT' = 'APPROVED') {
+  async function handleSaveAndPublish(targetStatus: 'APPROVED' | 'PENDING' | 'DRAFT' = 'PENDING') {
     if (!templateName.trim()) {
       toast.error('Template Name Required');
       return;
@@ -196,7 +264,7 @@ function TemplateBuilderContent() {
         category,
         marketingSubtype,
         offerText,
-        status: status === 'DRAFT' ? 'DRAFT' : 'APPROVED',
+        status: targetStatus,
         header: {
           type: headerType,
           textValue: headerText,
@@ -223,7 +291,7 @@ function TemplateBuilderContent() {
 
       const data = await res.json();
       if (data.success) {
-        toast.success(`Template "${templateName}" ${status === 'DRAFT' ? 'Saved as Draft' : 'Submitted to Meta WABA'}!`, {
+        toast.success(`Template "${templateName}" ${targetStatus === 'DRAFT' ? 'Saved as Draft' : 'Submitted for Meta Review'}!`, {
           description: 'Saved to Master Template Group in Supabase DB.',
           icon: <Icon icon="solar:check-circle-bold" className="w-5 h-5 text-emerald-400" />,
         });
@@ -232,7 +300,7 @@ function TemplateBuilderContent() {
         toast.error('Save Failed', { description: data.error });
       }
     } catch (err: any) {
-      toast.error('Exception Saving Template', { description: err?.message });
+      toast.error('Exception saving template', { description: err?.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -301,7 +369,7 @@ function TemplateBuilderContent() {
           </button>
 
           <button
-            onClick={() => handleSaveAndPublish('APPROVED')}
+            onClick={() => handleSaveAndPublish('PENDING')}
             disabled={isSubmitting}
             className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white dark:text-slate-950 font-black px-6 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-all shadow-xl shadow-cyan-500/20 active:scale-95 disabled:opacity-50"
           >
@@ -638,7 +706,7 @@ function TemplateBuilderContent() {
 
                 <div className="space-y-2">
                   {variables.map((v, vIdx) => (
-                    <div key={v.index} className="flex items-center gap-3">
+                    <div key={v.index ?? (v as any).key ?? `var_${vIdx}`} className="flex items-center gap-3">
                       <span className="px-2.5 py-1 rounded-lg bg-cyan-600 text-white font-mono font-bold text-xs shrink-0">
                         {`{{${v.index}}}`}
                       </span>
@@ -725,7 +793,7 @@ function TemplateBuilderContent() {
             {buttons.length > 0 && (
               <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl">
                 {buttons.map((btn, bIdx) => (
-                  <div key={btn.id} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                  <div key={btn.id || `btn-${bIdx}`} className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
                     <div className="flex items-center justify-between text-xs font-mono font-bold">
                       <span className="text-cyan-400">{btn.type} BUTTON #{bIdx + 1}</span>
                       <button

@@ -1,0 +1,102 @@
+{
+    "meta_whatsapp_assets": [
+        {
+            "waba": "833426632366395",
+            "phone_numbers": {
+                "data": [
+                    {
+                        "verified_name": "iBloom Connect",
+                        "code_verification_status": "VERIFIED",
+                        "display_phone_number": "+1 555-920-9734",
+                        "quality_rating": "GREEN",
+                        "platform_type": "CLOUD_API",
+                        "throughput": {
+                            "level": "STANDARD"
+                        },
+                        "webhook_configuration": {
+                            "application": "https://n8n.ibloomsolutions.com/webhook/4e9c956f-f5d2-4710-a1d3-7e6a9b031802/webhook"
+                        },
+                        "id": "1096174406906789"
+                    }
+                ]
+            }
+        },
+        {
+            "waba": "1108054054845520",
+            "phone_numbers": {
+                "data": [
+                    {
+                        "verified_name": "Test Number",
+                        "code_verification_status": "NOT_VERIFIED",
+                        "display_phone_number": "+1 555-183-4466",
+                        "quality_rating": "GREEN",
+                        "platform_type": "CLOUD_API",
+                        "throughput": {
+                            "level": "STANDARD"
+                        },
+                        "webhook_configuration": {
+                            "application": "https://n8n.ibloomsolutions.com/webhook/4e9c956f-f5d2-4710-a1d3-7e6a9b031802/webhook"
+                        },
+                        "id": "790023787531159"
+                    },
+                    {
+                        "verified_name": "iBloom Solutions",
+                        "code_verification_status": "EXPIRED",
+                        "display_phone_number": "+91 98899 44448",
+                        "quality_rating": "GREEN",
+                        "platform_type": "CLOUD_API",
+                        "throughput": {
+                            "level": "STANDARD"
+                        },
+                        "webhook_configuration": {
+                            "application": "https://n8n.ibloomsolutions.com/webhook/4e9c956f-f5d2-4710-a1d3-7e6a9b031802/webhook"
+                        },
+                        "id": "774699869066915"
+                    }
+                ]
+            }
+        },
+        {
+            "waba": "1318925406252007",
+            "phone_numbers": {
+                "data": [
+                    {
+                        "verified_name": "iBloom Solutions",
+                        "code_verification_status": "NOT_VERIFIED",
+                        "display_phone_number": "+91 79919 94689",
+                        "quality_rating": "GREEN",
+                        "platform_type": "ON_PREMISE",
+                        "throughput": {
+                            "level": "NOT_APPLICABLE"
+                        },
+                        "webhook_configuration": {
+                            "application": "https://n8n.ibloomsolutions.com/webhook/4e9c956f-f5d2-4710-a1d3-7e6a9b031802/webhook"
+                        },
+                        "id": "797772586751570"
+                    }
+                ]
+            }
+        },
+        {
+            "waba": "833426632366395",
+            "phone_numbers": {
+                "data": [
+                    {
+                        "verified_name": "iBloom Solutions 79",
+                        "code_verification_status": "VERIFIED",
+                        "display_phone_number": "+1 555-396-7560",
+                        "quality_rating": "UNKNOWN",
+                        "platform_type": "NOT_APPLICABLE",
+                        "throughput": {
+                            "level": "NOT_APPLICABLE"
+                        },
+                        "webhook_configuration": {
+                            "application": "https://n8n.ibloomsolutions.com/webhook/4e9c956f-f5d2-4710-a1d3-7e6a9b031802/webhook"
+                        },
+                        "id": "1265881103270699"
+                    }
+                ]
+            }
+        }
+    ]
+}

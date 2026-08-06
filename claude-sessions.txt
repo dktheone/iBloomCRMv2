@@ -1,0 +1,6 @@
+git bash
+claude --resume a6488813-9847-48c6-b884-7fb4e7c51cc9
+
+
+power shell
+claude --resume ec997688-d566-43ac-b43a-72e281a3ab6c

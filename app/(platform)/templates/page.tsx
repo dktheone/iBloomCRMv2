@@ -38,12 +38,14 @@ export default function TemplatesPage() {
   // Partitioned Templates Data
   const [discoveredTemplates, setDiscoveredTemplates] = useState<WhatsAppTemplate[]>([]);
   const [databaseTemplates, setDatabaseTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [archivedOrDeletedTemplates, setArchivedOrDeletedTemplates] = useState<WhatsAppTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
 
   // Overlay Modals
   const [previewTemplate, setPreviewTemplate] = useState<WhatsAppTemplate | null>(null);
   const [isWabaDrawerOpen, setIsWabaDrawerOpen] = useState(false);
+  const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
 
   function normalizeTemplateRecord(t: any, defaultWabaId: string): WhatsAppTemplate {
@@ -80,7 +82,7 @@ export default function TemplatesPage() {
     };
   }
 
-  // Load Partitioned Discovered & DB Templates directly from API
+  // Load Partitioned Discovered, DB & Archived Templates directly from API
   async function loadTemplates(showToast = false) {
     if (!activeLine) return;
     setIsLoadingTemplates(true);
@@ -92,24 +94,32 @@ export default function TemplatesPage() {
       if (data.success) {
         const disc = (data.discoveredTemplates || []).map((t: any) => normalizeTemplateRecord(t, targetWabaId));
         const db = (data.databaseTemplates || []).map((t: any) => normalizeTemplateRecord(t, targetWabaId));
+        const arch = (data.archivedOrDeletedTemplates || []).map((t: any) => normalizeTemplateRecord(t, targetWabaId));
 
         setDiscoveredTemplates(disc);
         setDatabaseTemplates(db);
+        setArchivedOrDeletedTemplates(arch);
 
         if (showToast) {
-          toast.success('Templates Synced!', {
-            description: `Discovered ${disc.length} Meta templates • ${db.length} Staged & Locked in DB.`,
+          let desc = `Discovered ${disc.length} Meta templates • ${db.length} Operational & Drafts in DB.`;
+          if (arch.length > 0) {
+            desc += ` (${arch.length} marked deleted/archived)`;
+          }
+          toast.success('Templates Synced & Reconciled!', {
+            description: desc,
             icon: <Icon icon="solar:restart-bold" className="w-5 h-5 text-cyan-400" />,
           });
         }
       } else {
         setDiscoveredTemplates([]);
         setDatabaseTemplates([]);
+        setArchivedOrDeletedTemplates([]);
       }
     } catch (err) {
       console.error('Error loading templates:', err);
       setDiscoveredTemplates([]);
       setDatabaseTemplates([]);
+      setArchivedOrDeletedTemplates([]);
     } finally {
       setIsLoadingTemplates(false);
     }
@@ -131,6 +141,7 @@ export default function TemplatesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...tmpl,
+          meta_template_id: tmpl.meta_template_id || tmpl.id,
           waba_id: targetWabaId,
         }),
       });
@@ -209,6 +220,24 @@ export default function TemplatesPage() {
     }
   }
 
+  async function handlePermanentDelete(id?: string, name?: string) {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/meta/templates?id=${id}&permanent=true`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Template "${name || 'Item'}" Permanently Deleted from CRM`, {
+          icon: <Icon icon="solar:trash-bin-trash-bold" className="w-5 h-5 text-rose-400" />,
+        });
+        await loadTemplates(false);
+      } else {
+        toast.error('Permanent Delete Failed', { description: data.error });
+      }
+    } catch (err: any) {
+      toast.error('Error deleting template', { description: err?.message });
+    }
+  }
+
   // Filtered Templates Helper
   const allTemplates = [...discoveredTemplates, ...databaseTemplates];
 
@@ -224,6 +253,15 @@ export default function TemplatesPage() {
 
   const filteredDiscoveredTemplates = filterTemplates(discoveredTemplates);
   const filteredDatabaseTemplates = filterTemplates(databaseTemplates);
+  const allFilteredDbTemplates = filteredDatabaseTemplates;
+
+  const filteredLockedDatabaseTemplates = allFilteredDbTemplates.filter(
+    (t) => t.status === 'APPROVED' || (t as any).local_staging_status === 'LOCKED'
+  );
+
+  const filteredDraftAndPendingTemplates = allFilteredDbTemplates.filter(
+    (t) => t.status === 'DRAFT' || t.status === 'PENDING' || (t as any).local_staging_status === 'DRAFT' || (t as any).local_staging_status === 'PENDING_META'
+  );
 
   // Filtered Prebuilt Templates
   const filteredPrebuiltTemplates = PREBUILT_TEMPLATES.filter((p) => {
@@ -337,7 +375,18 @@ export default function TemplatesPage() {
           )}
 
           {/* Inline Action Buttons (Sync & Refresh + Create New Template) */}
-          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
+            {archivedOrDeletedTemplates.length > 0 && (
+              <button
+                onClick={() => setIsArchivedModalOpen(true)}
+                className="bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono flex items-center gap-1.5 border border-rose-800/80 transition-all active:scale-95 shadow-xs"
+                title="View templates deleted on Meta or archived"
+              >
+                <Icon icon="solar:box-minimalistic-bold" className="w-4 h-4 text-rose-400" />
+                <span>Archived / Deleted ({archivedOrDeletedTemplates.length})</span>
+              </button>
+            )}
+
             <button
               onClick={() => loadTemplates(true)}
               disabled={isLoadingTemplates}
@@ -615,7 +664,119 @@ export default function TemplatesPage() {
                       )}
                     </div>
 
-                    {/* PARTITION 2: STAGED & LOCKED OPERATIONAL DATABASE TEMPLATES */}
+                    {/* PARTITION 2: LOCAL DRAFTS & PENDING SUBMISSIONS (Auto-hidden if 0 items) */}
+                    {filteredDraftAndPendingTemplates.length > 0 && (
+                      <div className="space-y-4 bg-slate-950/60 border border-purple-500/30 rounded-3xl p-5 shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 grid place-items-center">
+                              <Icon icon="solar:document-add-bold-duotone" className="w-4.5 h-4.5" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-extrabold text-white font-mono flex items-center gap-2">
+                                📝 Local Drafts &amp; Pending Meta Submissions
+                                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-black">
+                                  {filteredDraftAndPendingTemplates.length} UNLOCKED / DRAFT
+                                </span>
+                              </h3>
+                              <p className="text-[11px] text-slate-400">Templates currently saved in local draft state or awaiting official Meta approval</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                          {filteredDraftAndPendingTemplates.map((tmpl) => {
+                            const isDraft = tmpl.status === 'DRAFT' || !tmpl.meta_template_id || tmpl.meta_template_id.includes('-');
+                            const metaId = tmpl.meta_template_id && !tmpl.meta_template_id.includes('-') ? tmpl.meta_template_id : null;
+
+                            return (
+                              <div
+                                key={tmpl.id || tmpl.name}
+                                className={`bg-slate-950 border rounded-2xl p-5 space-y-4 shadow-md hover:shadow-xl transition-all duration-300 relative group overflow-hidden flex flex-col justify-between ${
+                                  isDraft ? 'border-slate-800 hover:border-purple-500/50' : 'border-amber-500/40 hover:border-amber-400'
+                                }`}
+                              >
+                                <div className="space-y-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <h4 className="text-sm font-extrabold text-white font-mono truncate" title={tmpl.name}>
+                                      {tmpl.name}
+                                    </h4>
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-mono font-black border shrink-0 flex items-center gap-1 ${
+                                      isDraft
+                                        ? 'bg-slate-800 text-slate-300 border-slate-700'
+                                        : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                                    }`}>
+                                      <Icon icon={isDraft ? "solar:pen-bold" : "solar:clock-circle-bold"} className="w-2.5 h-2.5" />
+                                      {isDraft ? '✏️ LOCAL DRAFT' : '⏳ PENDING META REVIEW'}
+                                    </span>
+                                  </div>
+
+                                  {/* META ID / LOCAL STATUS SUB-TAG */}
+                                  <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                                    {metaId ? (
+                                      <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                                        <Icon icon="solar:hashtag-bold" className="w-3 h-3 text-cyan-400" />
+                                        Meta ID: {metaId}
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800 flex items-center gap-1">
+                                        <Icon icon="solar:database-bold" className="w-3 h-3 text-slate-500" />
+                                        Local CRM Only (No Meta ID)
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 text-xs text-slate-300 leading-relaxed font-sans line-clamp-3 min-h-[64px]">
+                                    {tmpl.body?.text || 'No copy content'}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-[10px] font-mono font-bold">
+                                    <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                      {tmpl.category}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+                                      {tmpl.language || 'en_US'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+                                  <button
+                                    onClick={() => setPreviewTemplate(tmpl)}
+                                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                  >
+                                    <Icon icon="solar:eye-bold" className="w-3.5 h-3.5 text-cyan-400" />
+                                    <span>Preview</span>
+                                  </button>
+
+                                  <Link
+                                    href={`/templates/builder?id=${tmpl.id}`}
+                                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                                      isDraft
+                                        ? 'bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border-purple-500/30'
+                                        : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                    }`}
+                                  >
+                                    <Icon icon={isDraft ? "solar:upload-bold" : "solar:pen-bold"} className="w-3.5 h-3.5" />
+                                    <span>{isDraft ? 'Submit to Meta' : 'Edit Template'}</span>
+                                  </Link>
+
+                                  <button
+                                    onClick={() => handleDeleteTemplate(tmpl.id)}
+                                    className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+                                    title="Delete Template"
+                                  >
+                                    <Icon icon="solar:trash-bin-trash-bold" className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PARTITION 3: STAGED & LOCKED OPERATIONAL DATABASE TEMPLATES */}
                     <div className="space-y-4 bg-slate-950/60 border border-amber-500/30 rounded-3xl p-5 shadow-xl">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
                         <div className="flex items-center gap-2.5">
@@ -626,7 +787,7 @@ export default function TemplatesPage() {
                             <h3 className="text-sm font-extrabold text-white font-mono flex items-center gap-2">
                               Staged &amp; Locked Operational Database Templates
                               <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black">
-                                {filteredDatabaseTemplates.length} LOCKED
+                                {filteredLockedDatabaseTemplates.length} LOCKED
                               </span>
                             </h3>
                             <p className="text-[11px] text-slate-400">Templates saved in database and locked for active broadcast communication &amp; automation</p>
@@ -634,7 +795,7 @@ export default function TemplatesPage() {
                         </div>
                       </div>
 
-                      {filteredDatabaseTemplates.length === 0 ? (
+                      {filteredLockedDatabaseTemplates.length === 0 ? (
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-10 text-center space-y-3">
                           <Icon icon="solar:document-bold-duotone" className="w-10 h-10 text-slate-500 mx-auto" />
                           <h4 className="text-sm font-bold text-white">No locked database templates found</h4>
@@ -644,7 +805,7 @@ export default function TemplatesPage() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                          {filteredDatabaseTemplates.map((tmpl) => (
+                          {filteredLockedDatabaseTemplates.map((tmpl) => (
                             <div
                               key={tmpl.id || tmpl.name}
                               className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 space-y-4 shadow-md hover:shadow-xl transition-all duration-300 relative group overflow-hidden flex flex-col justify-between"
@@ -931,6 +1092,86 @@ export default function TemplatesPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ARCHIVED & DELETED ON META MODAL WINDOW */}
+      {isArchivedModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md grid place-items-center p-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl text-white relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:box-minimalistic-bold-duotone" className="w-5 h-5 text-rose-400" />
+                <div>
+                  <h3 className="text-sm font-bold font-mono">Archived &amp; Deleted Meta Templates</h3>
+                  <p className="text-[11px] text-slate-400">Templates deleted from Meta platform or archived locally</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsArchivedModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <Icon icon="solar:close-square-bold" className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+              {archivedOrDeletedTemplates.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500 font-mono">
+                  No archived or deleted templates found for this WABA.
+                </div>
+              ) : (
+                archivedOrDeletedTemplates.map((t) => (
+                  <div
+                    key={t.id || t.name}
+                    className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between gap-3 text-xs font-mono"
+                  >
+                    <div className="space-y-1 truncate">
+                      <div className="flex items-center gap-2 font-bold text-slate-100">
+                        <span>{t.name}</span>
+                        <span className="text-[10px] text-slate-400">({t.language})</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px]">
+                        {t.status === 'DELETED_ON_META' ? (
+                          <span className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold flex items-center gap-1">
+                            <Icon icon="solar:danger-triangle-bold" className="w-3 h-3" />
+                            ⚠️ Deleted on Meta
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-bold">
+                            📦 Archived
+                          </span>
+                        )}
+                        <span className="text-slate-500">{t.category}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => {
+                          setIsArchivedModalOpen(false);
+                          handleDuplicateTemplate(t);
+                        }}
+                        className="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-800 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95"
+                      >
+                        Restore / Re-create
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          await handlePermanentDelete(t.id, t.name);
+                        }}
+                        className="bg-rose-950 text-rose-300 hover:bg-rose-900 border border-rose-800 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95"
+                        title="Permanently remove from local CRM database"
+                      >
+                        <Icon icon="solar:trash-bin-trash-bold" className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))

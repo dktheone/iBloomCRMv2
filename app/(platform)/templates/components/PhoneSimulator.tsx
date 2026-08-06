@@ -84,34 +84,67 @@ export default function PhoneSimulator({ template, variables = [] }: PhoneSimula
                 )}
 
                 {template.header.type === 'IMAGE' && (
-                  <div className="space-y-1 text-center py-4 bg-slate-900/80 rounded-lg border border-slate-800">
-                    <Icon icon="solar:gallery-wide-bold-duotone" className="w-8 h-8 text-cyan-400 mx-auto" />
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {template.header.mediaFileName || 'Image Banner Header'}
-                    </div>
+                  <div className="rounded-lg overflow-hidden bg-slate-900 border border-slate-800">
+                    {template.header.mediaUrl ? (
+                      <img
+                        src={template.header.mediaUrl}
+                        alt="Header Banner"
+                        className="w-full h-32 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="space-y-1 text-center py-4 bg-slate-900/80">
+                        <Icon icon="solar:gallery-wide-bold-duotone" className="w-8 h-8 text-cyan-400 mx-auto" />
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {template.header.mediaFileName || 'Image Banner Header'}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {template.header.type === 'VIDEO' && (
-                  <div className="space-y-1 text-center py-4 bg-slate-900/80 rounded-lg border border-slate-800">
-                    <Icon icon="solar:videocamera-record-bold-duotone" className="w-8 h-8 text-teal-400 mx-auto" />
-                    <div className="text-[10px] text-slate-400 font-mono">Video Header Stream</div>
+                  <div className="rounded-lg overflow-hidden bg-slate-900 border border-slate-800">
+                    {template.header.mediaUrl ? (
+                      <video
+                        src={template.header.mediaUrl}
+                        controls
+                        className="w-full max-h-36 object-cover"
+                      />
+                    ) : (
+                      <div className="space-y-1 text-center py-4 bg-slate-900/80">
+                        <Icon icon="solar:videocamera-record-bold-duotone" className="w-8 h-8 text-teal-400 mx-auto" />
+                        <div className="text-[10px] text-slate-400 font-mono">Video Header Stream</div>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {template.header.type === 'DOCUMENT' && (
-                  <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-lg border border-slate-800">
-                    <Icon icon="solar:file-text-bold-duotone" className="w-6 h-6 text-amber-400" />
-                    <div className="truncate text-[10px] font-mono text-slate-300">
-                      {template.header.mediaFileName || 'Document.pdf'}
+                  <div className="flex items-center gap-2 p-2.5 bg-slate-900/90 rounded-lg border border-slate-800">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 grid place-items-center shrink-0">
+                      <Icon icon="solar:file-text-bold-duotone" className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate text-xs font-mono font-bold text-slate-200">
+                        {template.header.mediaFileName || 'Invoice_Document.pdf'}
+                      </div>
+                      <div className="text-[9px] text-slate-400 font-mono">PDF Attachment • Tap to view</div>
                     </div>
                   </div>
                 )}
 
                 {template.header.type === 'LOCATION' && (
-                  <div className="flex items-center gap-2 p-2 bg-slate-900/80 rounded-lg border border-slate-800">
-                    <Icon icon="solar:map-point-bold-duotone" className="w-6 h-6 text-rose-400" />
-                    <div className="text-[10px] font-mono text-slate-300">Location Map Card</div>
+                  <div className="flex items-center gap-2.5 p-2.5 bg-slate-900/90 rounded-lg border border-slate-800">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 grid place-items-center shrink-0">
+                      <Icon icon="solar:map-point-bold-duotone" className="w-5 h-5 text-rose-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-mono font-bold text-slate-200">Live GPS Location</div>
+                      <div className="text-[9px] text-slate-400 font-mono">Interactive Location Pin Card</div>
+                    </div>
                   </div>
                 )}
               </div>
