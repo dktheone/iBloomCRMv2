@@ -37,9 +37,30 @@ export interface MetaWebhookPayload {
 /**
  * Route incoming Meta webhook payload entries.
  */
-export async function routeMetaWebhook(payload: MetaWebhookPayload): Promise<WebhookHandlerResult[]> {
+export async function routeMetaWebhook(rawPayload: MetaWebhookPayload): Promise<WebhookHandlerResult[]> {
   const supabase = createAdminClient();
   const results: WebhookHandlerResult[] = [];
+
+  // Normalize Meta Developer Test Modal payload format (which lacks "entry" array wrapper)
+  let payload = rawPayload;
+  if (!payload.entry && (rawPayload as any).field && (rawPayload as any).value) {
+    const fieldVal = (rawPayload as any).field;
+    const valueObj = (rawPayload as any).value;
+    payload = {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: valueObj.metadata?.phone_number_id || 'test_waba_id',
+          changes: [
+            {
+              field: fieldVal,
+              value: valueObj,
+            },
+          ],
+        },
+      ],
+    };
+  }
 
   if (!payload.entry || !Array.isArray(payload.entry)) {
     return [{ success: false, status: 'dead_letter', error: 'Payload missing entry array' }];
@@ -71,8 +92,18 @@ export async function routeMetaWebhook(payload: MetaWebhookPayload): Promise<Web
         }
       }
 
-      // If tenant resolution fails for message/status field, log unresolved tenant
+      // If tenant resolution fails for message/status field, check if it's Meta Test Modal dummy ID
       if (!tenantUid && ['messages', 'statuses'].includes(field)) {
+        if (metaPhoneNumberId === '123456123' || metaPhoneNumberId?.startsWith('12345')) {
+          results.push({
+            success: true,
+            status: 'processed',
+            external_event_id: metaPhoneNumberId,
+            details: { note: 'Meta Developer Test Modal Sample Payload' },
+          });
+          continue;
+        }
+
         console.warn(`[Meta Webhook Router] Could not resolve tenant for phone_number_id: ${metaPhoneNumberId}`);
         results.push({
           success: false,

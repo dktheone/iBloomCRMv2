@@ -15,6 +15,18 @@
 # production
 /build
 
+# agents folder
+/.claude/
+/.codebuddy/
+/.gemini/
+/.kiro/
+/.qoder/
+/.cursor/
+/.vscode/
+/.old-crm-backup/
+
+.cursorrules
+
 # misc
 .DS_Store
 *.pem
@@ -65,3 +77,15 @@ next-env.d.ts
 # Misc JSON configs not needed for app runtime
 /wapi_automation_flow_kit.json
 /data/
+# Added by code-review-graph
+.code-review-graph/
+.windsurfrules
+
+GEMINI.md
+QODER.md
+CODEBUDDY.md
+data/meta_graph_api_logs.json
+AGENTS.md
+.github/code-review-graph.instruction.md
+docs/review-generation-module-spec.md
+data/meta_graph_api_logs.json
