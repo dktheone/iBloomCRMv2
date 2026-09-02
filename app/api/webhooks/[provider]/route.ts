@@ -52,41 +52,71 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 }
 
 /**
- * POST — Incoming Webhook Payload Receiver
+ * POST — Incoming Webhook Payload Receiver (100% Unrestricted First-Pass Logging)
  */
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const { provider } = await params;
   const providerKey = provider.toLowerCase() as WebhookProvider;
 
-  // Measure 3: Read raw body string FIRST before any JSON parsing
+  // STEP 0: Read raw body string FIRST before any validation
   const rawBody = await req.text();
   const signatureHeader = req.headers.get('x-hub-signature-256');
 
+  // STEP 0.1: Safe JSON parsing (handles non-JSON raw text gracefully)
+  let payload: any = {};
+  try {
+    payload = JSON.parse(rawBody);
+  } catch (err) {
+    payload = { _raw_text: rawBody, _error: 'Unparseable non-JSON text payload' };
+  }
+
+  // STEP 0.2: Extract Event Type & External WAMID safely
+  const eventType =
+    payload.entry?.[0]?.changes?.[0]?.field ||
+    payload.field ||
+    (payload.object ? `object_${payload.object}` : 'raw_unfiltered');
+
+  const externalEventId =
+    payload.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.id ||
+    payload.value?.messages?.[0]?.id ||
+    payload.entry?.[0]?.changes?.[0]?.value?.statuses?.[0]?.id ||
+    payload.value?.statuses?.[0]?.id ||
+    null;
+
+  const subProvider = providerKey === 'meta' ? 'whatsapp' : 'generic';
+
+  // STEP 0.3: UNRESTRICTED FIRST-PASS LOGGING — GUARANTEED INSERTION BEFORE ANY VALIDATION
+  const loggedRecord = await logWebhookEvent({
+    provider: providerKey,
+    sub_provider: subProvider,
+    event_type: eventType,
+    external_event_id: externalEventId,
+    payload,
+    status: 'received',
+  });
+
   const supabase = createAdminClient();
 
-  // 1. Fetch provider configuration & secret token from DB
+  // 1. Fetch provider configuration from DB
   const { data: config } = await supabase
     .from('provider_webhook_configs')
     .select('is_enabled, secret_token, verify_token')
     .eq('provider', providerKey)
     .maybeSingle();
 
-  // If provider is explicitly disabled in Superadmin Control Center, log & gate
+  // If provider is explicitly disabled in Superadmin Control Center, update log & gate
   if (config && !config.is_enabled) {
-    let parsedPayload = {};
-    try { parsedPayload = JSON.parse(rawBody); } catch {}
-
-    await logWebhookEvent({
-      provider: providerKey,
-      sub_provider: 'whatsapp',
-      event_type: 'disabled_gated',
-      payload: parsedPayload,
-      status: 'disabled_provider',
-      error_message: `Webhook endpoint for provider '${providerKey}' is currently disabled in Superadmin settings.`,
-    });
-
+    if (loggedRecord?.event_uid) {
+      await updateWebhookEventStatus(
+        loggedRecord.event_uid,
+        'disabled_provider',
+        `Webhook endpoint for provider '${providerKey}' is currently disabled in Superadmin settings.`
+      );
+    }
     return NextResponse.json({ status: 'disabled', message: 'Webhook endpoint disabled' }, { status: 200 });
   }
+
+  // 2. Verify HMAC Signature
   let appSecret =
     process.env.META_APP_SECRET ||
     process.env.NEXT_PUBLIC_META_APP_SECRET ||
@@ -101,45 +131,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const isValid = verifyMetaSignature(rawBody, signatureHeader, appSecret);
     if (!isValid) {
       console.warn('[Meta Webhook POST] HMAC Signature verification failed!');
-      // Log dead-letter for invalid signature
-      let parsedPayload = {};
-      try { parsedPayload = JSON.parse(rawBody); } catch {}
-
-      await logWebhookEvent({
-        provider: providerKey,
-        sub_provider: 'whatsapp',
-        event_type: 'signature_mismatch',
-        payload: parsedPayload,
-        status: 'dead_letter',
-        error_message: 'X-Hub-Signature-256 HMAC verification failed',
-      });
-
+      if (loggedRecord?.event_uid) {
+        await updateWebhookEventStatus(
+          loggedRecord.event_uid,
+          'dead_letter',
+          'X-Hub-Signature-256 HMAC verification failed'
+        );
+      }
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
   }
 
-  // 3. Parse JSON Body
-  let payload: any = {};
-  try {
-    payload = JSON.parse(rawBody);
-  } catch (err) {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-
-  // 4. Determine Event Type & Log Raw Payload to webhook_events
-  const eventType = payload.entry?.[0]?.changes?.[0]?.field || 'messages';
-  const subProvider = providerKey === 'meta' ? 'whatsapp' : 'generic';
-
-  const loggedRecord = await logWebhookEvent({
-    provider: providerKey,
-    sub_provider: subProvider,
-    event_type: eventType,
-    payload,
-    status: 'received',
-  });
-
-  // 5. Asynchronous Processing Execution
-  // Immediately acknowledge Meta with HTTP 200 OK to prevent 7-day retries
+  // 3. Asynchronous Processing Execution & Status Update
   const executionPromise = (async () => {
     if (providerKey === 'meta') {
       const results = await routeMetaWebhook(payload);

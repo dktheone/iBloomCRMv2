@@ -1,5 +1,331 @@
 [
   {
+    "id": "log_1788370379917_1ue9y",
+    "timestamp": "2026-09-02T17:32:59.917Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1108054054845520/phone_numbers",
+    "fullUrl": "https://graph.facebook.com/v25.0/1108054054845520/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,messaging_limit_tier,name_status,is_test_number&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 1388,
+    "responseBody": {
+      "data": [
+        {
+          "id": "790023787531159",
+          "display_phone_number": "+1 555-183-4466",
+          "verified_name": "Test Number",
+          "quality_rating": "GREEN",
+          "code_verification_status": "NOT_VERIFIED",
+          "name_status": "APPROVED"
+        },
+        {
+          "id": "774699869066915",
+          "display_phone_number": "+91 98899 44448",
+          "verified_name": "iBloom Solutions",
+          "quality_rating": "GREEN",
+          "code_verification_status": "EXPIRED",
+          "name_status": "NON_EXISTS"
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVExaNnFqSFNTRzZAZAak9zQzFFUmlKV285UGZALUnZAObEtNTnF4V2VQWjVkOGdWbGYwVjJ1dlFKTnNRYzc3eVI2MTIZD",
+          "after": "QVFIVGE3SkdpVGgzb001cEM4MmZAmak1LRW9QNzlkTTJtSDBSaENCbTFvbWFMQmF2allQWFVHQUdhX0dHZAVJfY3N6QUYZD"
+        }
+      }
+    }
+  },
+  {
+    "id": "log_1788370378188_7vof0",
+    "timestamp": "2026-09-02T17:32:58.188Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1108054054845520",
+    "fullUrl": "https://graph.facebook.com/v25.0/1108054054845520?fields=health_status&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 587,
+    "responseBody": {
+      "id": "1108054054845520",
+      "health_status": {
+        "can_send_message": "AVAILABLE",
+        "entities": [
+          {
+            "entity_type": "WABA",
+            "id": "1108054054845520",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "BUSINESS",
+            "id": "1304712777970662",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "APP",
+            "id": "794921202917198",
+            "can_send_message": "AVAILABLE"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "log_1788370377336_ov6x8",
+    "timestamp": "2026-09-02T17:32:57.336Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1318925406252007/phone_numbers",
+    "fullUrl": "https://graph.facebook.com/v25.0/1318925406252007/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,messaging_limit_tier,name_status,is_test_number&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 1253,
+    "responseBody": {
+      "data": [
+        {
+          "id": "797772586751570",
+          "display_phone_number": "+91 79919 94689",
+          "verified_name": "Ibloom Solutions",
+          "quality_rating": "GREEN",
+          "code_verification_status": "NOT_VERIFIED",
+          "messaging_limit_tier": "TIER_250",
+          "name_status": "AVAILABLE_WITHOUT_REVIEW"
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVG1zdVYxOEdCaEM0eGM3cGJScUI5ZAzV0ZAkhHa0hGcEFLRWFOYVQ4VWx4SzQ0VUZApa1oyZAUlxYU9lYVp4akItTXoZD",
+          "after": "QVFIVG1zdVYxOEdCaEM0eGM3cGJScUI5ZAzV0ZAkhHa0hGcEFLRWFOYVQ4VWx4SzQ0VUZApa1oyZAUlxYU9lYVp4akItTXoZD"
+        }
+      }
+    }
+  },
+  {
+    "id": "log_1788370375906_a1adw",
+    "timestamp": "2026-09-02T17:32:55.906Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1318925406252007",
+    "fullUrl": "https://graph.facebook.com/v25.0/1318925406252007?fields=health_status&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 848,
+    "responseBody": {
+      "id": "1318925406252007",
+      "health_status": {
+        "can_send_message": "AVAILABLE",
+        "entities": [
+          {
+            "entity_type": "WABA",
+            "id": "1318925406252007",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "APP",
+            "id": "794921202917198",
+            "can_send_message": "AVAILABLE"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "log_1788370374749_dknsk",
+    "timestamp": "2026-09-02T17:32:54.749Z",
+    "method": "GET",
+    "endpoint": "/v25.0/833426632366395/phone_numbers",
+    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,messaging_limit_tier,name_status,is_test_number&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 1105,
+    "responseBody": {
+      "data": [
+        {
+          "id": "1096174406906789",
+          "display_phone_number": "+1 555-920-9734",
+          "verified_name": "iBloom Connect",
+          "quality_rating": "GREEN",
+          "code_verification_status": "VERIFIED",
+          "name_status": "APPROVED"
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVDhFa1o1OTJZAcEN5T0pFLXVVdmNrVXBWX3JmVlFvRWFZAYjJabHU2eVplWFdFOFlPMzBIdmVNcXZAZAV1pUZA1FfbmsZD",
+          "after": "QVFIVDhFa1o1OTJZAcEN5T0pFLXVVdmNrVXBWX3JmVlFvRWFZAYjJabHU2eVplWFdFOFlPMzBIdmVNcXZAZAV1pUZA1FfbmsZD"
+        }
+      }
+    }
+  },
+  {
+    "id": "log_1788370372613_5xi9c",
+    "timestamp": "2026-09-02T17:32:52.613Z",
+    "method": "GET",
+    "endpoint": "/v25.0/833426632366395",
+    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395?fields=health_status&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 799,
+    "responseBody": {
+      "id": "833426632366395",
+      "health_status": {
+        "can_send_message": "AVAILABLE",
+        "entities": [
+          {
+            "entity_type": "WABA",
+            "id": "833426632366395",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "BUSINESS",
+            "id": "1304712777970662",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "APP",
+            "id": "794921202917198",
+            "can_send_message": "AVAILABLE"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "log_1788370371383_2rpgq",
+    "timestamp": "2026-09-02T17:32:51.383Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1032650909498082/phone_numbers",
+    "fullUrl": "https://graph.facebook.com/v25.0/1032650909498082/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,messaging_limit_tier,name_status,is_test_number&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 1121,
+    "responseBody": {
+      "data": [
+        {
+          "id": "1265881103270699",
+          "display_phone_number": "+1 555-396-7560",
+          "verified_name": "iBloom Solutions 79",
+          "quality_rating": "UNKNOWN",
+          "code_verification_status": "VERIFIED",
+          "name_status": "APPROVED"
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVEpBUXNvY1YtM1JNMHN0cnp3c0ZAGcVUyWU5ldWNBNktKMER5eGwyRGxQQi1QM3VSYTVWUmN4UVh4WndaUVM0bk0ZD",
+          "after": "QVFIVEpBUXNvY1YtM1JNMHN0cnp3c0ZAGcVUyWU5ldWNBNktKMER5eGwyRGxQQi1QM3VSYTVWUmN4UVh4WndaUVM0bk0ZD"
+        }
+      }
+    }
+  },
+  {
+    "id": "log_1788370369963_hiauj",
+    "timestamp": "2026-09-02T17:32:49.963Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1032650909498082",
+    "fullUrl": "https://graph.facebook.com/v25.0/1032650909498082?fields=health_status&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 713,
+    "responseBody": {
+      "id": "1032650909498082",
+      "health_status": {
+        "can_send_message": "AVAILABLE",
+        "entities": [
+          {
+            "entity_type": "WABA",
+            "id": "1032650909498082",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "BUSINESS",
+            "id": "1304712777970662",
+            "can_send_message": "AVAILABLE"
+          },
+          {
+            "entity_type": "APP",
+            "id": "794921202917198",
+            "can_send_message": "AVAILABLE"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "log_1788370368681_jngli",
+    "timestamp": "2026-09-02T17:32:48.681Z",
+    "method": "GET",
+    "endpoint": "/v25.0/1304712777970662/owned_whatsapp_business_accounts",
+    "fullUrl": "https://graph.facebook.com/v25.0/1304712777970662/owned_whatsapp_business_accounts?fields=id,name,currency,timezone_id,account_review_status,message_template_namespace&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 1236,
+    "responseBody": {
+      "data": [
+        {
+          "id": "1032650909498082",
+          "name": "iBloom Solutions 79",
+          "currency": "INR",
+          "timezone_id": "476",
+          "account_review_status": "APPROVED",
+          "message_template_namespace": "1064d4c2_d69d_439b_a091_775634c20eb9"
+        },
+        {
+          "id": "833426632366395",
+          "name": "IBloom Solutions",
+          "currency": "INR",
+          "timezone_id": "71",
+          "account_review_status": "APPROVED",
+          "message_template_namespace": "fbbdbf35_763f_4c88_b1bf_9e49ff310538"
+        },
+        {
+          "id": "1318925406252007",
+          "name": "Ibloom Solutions",
+          "currency": "INR",
+          "timezone_id": "71",
+          "account_review_status": "APPROVED",
+          "message_template_namespace": "f58a7e0e_a364_4da0_b658_7ae5ecb6de4c"
+        },
+        {
+          "id": "1108054054845520",
+          "name": "iBloom-WhatsApp-Business",
+          "currency": "INR",
+          "timezone_id": "71",
+          "account_review_status": "APPROVED",
+          "message_template_namespace": "9a42a90c_99eb_41ff_83ac_7372d1e39d0b"
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVGdwSmNEQ3Jic0xyQXcycTNBSmNBWV85dWw4YVNoSlVDQTdBRnVWUmxtd21kcTNrYkdEeXVwVXhINTVBY3g5VDBPRnRhSHZANaGFTTU13SHh4ZAUdjaDlR",
+          "after": "QVFIVFp0aVVWdmRIQllLaDhIR0NhVHJZAdHYzamdYWU4zQnI2OGpzV2JvYXVSdWpEUWFsUVU2dlBXeld2TXNOdkJaaFNoNkYwblFEaTRiZAjNaZAE92ancxWjJR"
+        }
+      }
+    }
+  },
+  {
+    "id": "log_1788370366750_yymns",
+    "timestamp": "2026-09-02T17:32:46.750Z",
+    "method": "GET",
+    "endpoint": "/v25.0/794921202917198",
+    "fullUrl": "https://graph.facebook.com/v25.0/794921202917198?access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
+    "requestBody": null,
+    "responseStatus": 200,
+    "ok": true,
+    "durationMs": 1191,
+    "responseBody": {
+      "link": "https://www.facebook.com/games/?app_id=794921202917198",
+      "name": "iBloomConnect",
+      "namespace": "ibloomsolutions",
+      "id": "794921202917198"
+    }
+  },
+  {
     "id": "log_1788365774601_j4sg2",
     "timestamp": "2026-09-02T16:16:14.601Z",
     "method": "GET",
@@ -36468,1056 +36794,6 @@
     "responseStatus": 200,
     "ok": true,
     "durationMs": 508,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785780623573_gdewb",
-    "timestamp": "2026-08-03T18:10:23.573Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 688,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785780533682_orfsh",
-    "timestamp": "2026-08-03T18:08:53.682Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 687,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785780527788_96yip",
-    "timestamp": "2026-08-03T18:08:47.788Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 795,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785780511115_v8ej2",
-    "timestamp": "2026-08-03T18:08:31.115Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 1529,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785780473473_od1a8",
-    "timestamp": "2026-08-03T18:07:53.473Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 693,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785780408405_nk8zj",
-    "timestamp": "2026-08-03T18:06:48.405Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 1110,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785778694017_y2tt5",
-    "timestamp": "2026-08-03T17:38:14.017Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 444,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785778693225_718k8",
-    "timestamp": "2026-08-03T17:38:13.225Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 673,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785778672455_wc73w",
-    "timestamp": "2026-08-03T17:37:52.455Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 476,
-    "responseBody": {
-      "data": [
-        {
-          "id": "1050592894223628",
-          "name": "flow_check",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "BODY",
-              "text": "Hello {{1}},\nThis is to inform you that this is the latest message",
-              "example": {
-                "body_text": [
-                  [
-                    "User"
-                  ]
-                ]
-              }
-            },
-            {
-              "type": "BUTTONS",
-              "buttons": [
-                {
-                  "type": "FLOW",
-                  "text": "View Flow",
-                  "flow_id": 895544903627950,
-                  "flow_action": "NAVIGATE",
-                  "navigate_screen": "SURVEY"
-                }
-              ]
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1753281079052211",
-          "name": "calling_pref",
-          "status": "APPROVED",
-          "category": "MARKETING",
-          "language": "en",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Hi"
-            },
-            {
-              "type": "BODY",
-              "text": "Hello"
-            },
-            {
-              "type": "CALL_PERMISSION_REQUEST"
-            }
-          ],
-          "rejected_reason": "NONE"
-        },
-        {
-          "id": "1362220076031825",
-          "name": "appointment_rescheeduled",
-          "status": "APPROVED",
-          "category": "UTILITY",
-          "language": "en_US",
-          "components": [
-            {
-              "type": "HEADER",
-              "format": "TEXT",
-              "text": "Appointment rescheduled"
-            },
-            {
-              "type": "BODY",
-              "text": "Hi {{1}},\nYour appointment has been rescheduled to {{2}}.\n\nService: {{3}}\nConfirmation number: {{4}}\n\nWe're looking forward to your visit.\n",
-              "example": {
-                "body_text": [
-                  [
-                    "John",
-                    "January 25, 2026 at 2:00 PM",
-                    "Haircut",
-                    "APT-12345"
-                  ]
-                ]
-              }
-            }
-          ],
-          "rejected_reason": "NONE"
-        }
-      ],
-      "paging": {
-        "cursors": {
-          "before": "QVFIU2NuU0d2c05Tem9qaXJWWEpiZAmtIQVg2UmRfWTJKc2tyR1FvYTVFaWQ2azRjYU5ETlFUM1VmQlpMZAW9WZAGFXYzdpLXhKMUpPSE41c2VkSUtqSWVHWXJR",
-          "after": "QVFIU3ZAzQ1drWWRMRTlOaWtma3BUblpRS3EzMU1sU082X0dxMTJvb19SdVpXU2otWGJUWDBjOGpwWV9rbHN4UklubWROZAU5IcnpjVVBtUURUc09SVzBlbFp3"
-        }
-      }
-    }
-  },
-  {
-    "id": "log_1785778671744_vrvuz",
-    "timestamp": "2026-08-03T17:37:51.744Z",
-    "method": "GET",
-    "endpoint": "/v25.0/833426632366395/message_templates",
-    "fullUrl": "https://graph.facebook.com/v25.0/833426632366395/message_templates?fields=id,name,status,category,language,components,rejected_reason&limit=100&access_token=EAALSZBgPsn04BRH0HppNpFpvZClCikwg0swpMjfCyoJIpuuJZBgqepSvJ4hUxCjJZBEZBZA5sZC4UTBiEOT5AZCBGz0YZA9qOq6RKnix3aDwlwtHcBP4J4bpNzNKk2Dulp8ck0crq9BEqCgAL2kVACOXQjJTjn3bLeXiJTfHK5egt3Qs1uWDtzGqlI2j0kEbMPKWjTgZDZD_MASKED",
-    "requestBody": null,
-    "responseStatus": 200,
-    "ok": true,
-    "durationMs": 746,
     "responseBody": {
       "data": [
         {
