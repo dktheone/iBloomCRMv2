@@ -11,7 +11,7 @@ import { WebhookHandlerResult } from '@/lib/webhooks/core/types';
 import { getWebhookFileLogs } from '@/lib/webhooks/core/file-logger';
 
 /**
- * GET — Fetch filtered, paginated webhook logs (Primary: Filesystem JSON, Fallback: Supabase).
+ * GET — Fetch filtered, paginated webhook logs (Primary: Supabase webhook_events, Fallback: Local Filesystem).
  */
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -27,29 +27,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('search') || '';
   const limit = parseInt(searchParams.get('limit') || '50');
 
-  // 1. Primary Source: Check local filesystem logs (data/webhook_raw_logs.json)
-  const fileLogs = getWebhookFileLogs(provider, limit);
-
-  let filteredFileLogs = fileLogs;
-  if (status !== 'all') {
-    filteredFileLogs = filteredFileLogs.filter((evt) => evt.status === status);
-  }
-  if (search) {
-    const q = search.toLowerCase();
-    filteredFileLogs = filteredFileLogs.filter(
-      (evt) =>
-        evt.external_event_id?.toLowerCase().includes(q) ||
-        evt.event_type?.toLowerCase().includes(q) ||
-        evt.event_uid?.toLowerCase().includes(q)
-    );
-  }
-
-  // If filesystem has logs, return them directly
-  if (filteredFileLogs.length > 0) {
-    return NextResponse.json({ events: filteredFileLogs, source: 'filesystem' });
-  }
-
-  // 2. Fallback to Supabase query if file logs are empty
+  // 1. Primary Source: Query public.webhook_events from Supabase
   try {
     const adminClient = createAdminClient();
     let query = adminClient
@@ -69,11 +47,27 @@ export async function GET(req: NextRequest) {
 
     const { data: events, error } = await query;
 
-    if (!error && events && events.length > 0) {
+    if (!error && events) {
       return NextResponse.json({ events, source: 'supabase' });
     }
   } catch (dbErr) {
-    console.warn('[Admin Webhooks Events] Supabase fallback query failed:', dbErr);
+    console.warn('[Admin Webhooks Events] Supabase query failed, falling back to filesystem logs:', dbErr);
+  }
+
+  // 2. Resilient Fallback: Read local filesystem logs (data/webhook_raw_logs.json)
+  const fileLogs = getWebhookFileLogs(provider, limit);
+  let filteredFileLogs = fileLogs;
+  if (status !== 'all') {
+    filteredFileLogs = filteredFileLogs.filter((evt) => evt.status === status);
+  }
+  if (search) {
+    const q = search.toLowerCase();
+    filteredFileLogs = filteredFileLogs.filter(
+      (evt) =>
+        evt.external_event_id?.toLowerCase().includes(q) ||
+        evt.event_type?.toLowerCase().includes(q) ||
+        evt.event_uid?.toLowerCase().includes(q)
+    );
   }
 
   return NextResponse.json({ events: filteredFileLogs, source: 'filesystem' });
