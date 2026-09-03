@@ -80,9 +80,16 @@ const ConversationRow: React.FC<RowProps> = ({ conv, isSelected, onClick }) => {
             {contact?.opt_in_status === 'opted_out' && (
               <Icon icon="solar:forbidden-bold-duotone" className="text-red-500 shrink-0 text-sm" />
             )}
-            {isExpired && (
-              <span title="24h window expired" className="text-xs">⏰</span>
-            )}
+            {isExpired ? (
+              <span title="24h messaging window closed" className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 shrink-0">
+                24h Expired
+              </span>
+            ) : window_expires_at ? (
+              <span title="24h messaging window active" className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 shrink-0 inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                24h Open
+              </span>
+            ) : null}
           </div>
           <span className={`text-xs whitespace-nowrap ${hasUnread ? 'text-cyan-600 dark:text-cyan-400 font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
             {formatRelativeTime(last_message_at)}

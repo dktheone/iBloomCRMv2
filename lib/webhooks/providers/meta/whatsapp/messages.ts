@@ -13,6 +13,8 @@ export function normalizeToE164(rawPhone: string): string {
   return `+${digits}`;
 }
 
+import { resolveUnifiedContactAndConversation } from '@/lib/contacts/contact-resolver';
+
 export interface ProcessInboundMessageParams {
   tenantUid: string;
   phoneLineUid: string;
@@ -41,61 +43,17 @@ export async function processInboundMessage(params: ProcessInboundMessageParams)
     };
   }
 
-  // Measure 2: Strict E.164 Normalization (+91...)
-  const waPhone = normalizeToE164(rawFrom);
-  const contactName = contactProfile?.name || waPhone;
+  const contactName = contactProfile?.name || rawFrom;
 
   try {
-    // 1. Upsert Contact (tenant_uid, wa_phone)
-    const { data: contact, error: contactErr } = await supabase
-      .from('contacts')
-      .upsert(
-        {
-          tenant_uid: tenantUid,
-          wa_phone: waPhone,
-          name: contactName,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'tenant_uid,wa_phone' }
-      )
-      .select('contact_uid, name, opt_in_status')
-      .single();
-
-    if (contactErr || !contact) {
-      console.error('[Inbound Webhook] Contact upsert failed:', contactErr);
-      return {
-        success: false,
-        status: 'dead_letter',
-        error: `Contact upsert failed: ${contactErr?.message}`,
-      };
-    }
-
-    // 2. Upsert Conversation (tenant_uid, contact_uid, phone_line_uid)
-    const { data: conversation, error: convErr } = await supabase
-      .from('conversations')
-      .upsert(
-        {
-          tenant_uid: tenantUid,
-          contact_uid: contact.contact_uid,
-          phone_line_uid: phoneLineUid,
-          lifecycle_status: 'open',
-          last_inbound_at: timestamp,
-          window_expires_at: new Date(new Date(timestamp).getTime() + 24 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'tenant_uid,contact_uid,phone_line_uid' }
-      )
-      .select('conversation_uid')
-      .single();
-
-    if (convErr || !conversation) {
-      console.error('[Inbound Webhook] Conversation upsert failed:', convErr);
-      return {
-        success: false,
-        status: 'dead_letter',
-        error: `Conversation upsert failed: ${convErr?.message}`,
-      };
-    }
+    // 1 & 2. Resolve or create unified Contact & Conversation (prevents split chats)
+    const { contact, conversation } = await resolveUnifiedContactAndConversation(supabase, {
+      tenantUid,
+      phoneLineUid,
+      rawPhone: rawFrom,
+      contactName,
+      isInbound: true,
+    });
 
     // 3. Structure Canonical Message Content
     let contentJson: Record<string, any> = {};
@@ -105,17 +63,20 @@ export async function processInboundMessage(params: ProcessInboundMessageParams)
       contentJson = { body: payloadMessage.text?.body || '' };
     } else if (['image', 'video', 'audio', 'document', 'sticker'].includes(messageType)) {
       const mediaObj = payloadMessage[messageType] || {};
+      const mediaUrl = mediaObj.id ? `/api/media/${mediaObj.id}` : null;
       contentJson = {
         mime_type: mediaObj.mime_type || '',
         caption: mediaObj.caption || '',
         filename: mediaObj.filename || '',
         sha256: mediaObj.sha256 || '',
+        media_url: mediaUrl,
       };
-      // Measure 4: Stash media id for background download
+      // Stash media id and proxy URL for instant streaming
       mediaRef = {
         meta_media_id: mediaObj.id || '',
         mime_type: mediaObj.mime_type || '',
-        download_status: 'pending',
+        url: mediaUrl,
+        download_status: 'available',
       };
     } else if (messageType === 'location') {
       contentJson = {

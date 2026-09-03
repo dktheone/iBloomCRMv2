@@ -53,49 +53,65 @@ function TemplateContent({ content }: { content: any }) {
   const footer = components.find((c: any) => c.type === 'FOOTER' || c.type === 'footer');
   const buttons = components.filter((c: any) => c.type === 'BUTTONS' || c.type === 'button');
 
+  // Look for resolved body text in content.body?.text, content.resolved_body, or fallback
+  const bodyText =
+    content?.body?.text ||
+    content?.resolved_body ||
+    body?.text ||
+    (content?.raw_params?.[0]?.parameters ? content.raw_params[0].parameters.map((p: any) => p.text).join(' ') : null);
+
   return (
-    <div className="space-y-1 min-w-[200px] max-w-xs">
+    <div className="space-y-1.5 min-w-[220px] max-w-sm">
       {/* Template badge */}
-      <div className="flex items-center gap-1.5 pb-1.5 border-b border-white/20 dark:border-slate-600/40">
-        <Icon icon="solar:document-text-bold-duotone" className="w-3.5 h-3.5 opacity-70" />
-        <span className="text-[10px] font-mono font-bold opacity-70 uppercase tracking-wider">
-          {content?.template_name ?? 'Template'}
-        </span>
+      <div className="flex items-center justify-between gap-1.5 pb-1.5 border-b border-white/20 dark:border-slate-600/40">
+        <div className="flex items-center gap-1.5">
+          <Icon icon="solar:document-text-bold-duotone" className="w-3.5 h-3.5 opacity-70" />
+          <span className="text-[10px] font-mono font-bold opacity-70 uppercase tracking-wider">
+            {content?.template_name ?? 'Template'}
+          </span>
+        </div>
+        {content?.language && (
+          <span className="text-[9px] font-mono opacity-50 uppercase">{content.language}</span>
+        )}
       </div>
 
       {/* Header */}
       {header && (
         <div className="font-bold text-sm">
           {header.format === 'IMAGE' ? (
-            <div className="h-24 rounded-xl bg-white/10 dark:bg-slate-700/50 flex items-center justify-center">
-              <Icon icon="solar:gallery-bold-duotone" className="w-8 h-8 opacity-40" />
+            <div className="h-28 rounded-xl bg-white/10 dark:bg-slate-700/50 flex items-center justify-center overflow-hidden">
+              {header.media_url ? (
+                <img src={header.media_url} alt="Template header" className="w-full h-full object-cover" />
+              ) : (
+                <Icon icon="solar:gallery-bold-duotone" className="w-8 h-8 opacity-40" />
+              )}
             </div>
           ) : header.format === 'VIDEO' ? (
-            <div className="h-24 rounded-xl bg-white/10 dark:bg-slate-700/50 flex items-center justify-center">
+            <div className="h-28 rounded-xl bg-white/10 dark:bg-slate-700/50 flex items-center justify-center">
               <Icon icon="solar:play-circle-bold-duotone" className="w-8 h-8 opacity-40" />
             </div>
           ) : header.format === 'DOCUMENT' ? (
             <div className="flex items-center gap-2 bg-white/10 dark:bg-slate-700/50 rounded-xl px-3 py-2">
               <Icon icon="solar:file-text-bold-duotone" className="w-5 h-5 opacity-70" />
-              <span className="text-xs">Document</span>
+              <span className="text-xs">Document Header</span>
             </div>
           ) : (
-            <span>{header.text ?? ''}</span>
+            <span className="text-sm font-semibold">{header.text ?? ''}</span>
           )}
         </div>
       )}
 
       {/* Body */}
-      {body && (
+      {bodyText ? (
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-          {body.text ?? content?.resolved_bindings
-            ? applyBindings(body?.text ?? '', content.resolved_bindings)
-            : body?.text ?? ''}
+          {bodyText}
         </p>
+      ) : (
+        <p className="text-xs opacity-70 italic">Template message sent.</p>
       )}
 
       {/* Footer */}
-      {footer && (
+      {footer?.text && (
         <p className="text-[11px] opacity-60 mt-1">{footer.text}</p>
       )}
 
@@ -105,7 +121,7 @@ function TemplateContent({ content }: { content: any }) {
           {buttons.map((btn: any, i: number) => (
             <div
               key={i}
-              className="text-center text-xs font-bold py-1.5 rounded-lg bg-white/15 dark:bg-slate-600/40 hover:bg-white/25 cursor-default"
+              className="text-center text-xs font-bold py-1.5 rounded-lg bg-white/15 dark:bg-slate-600/40 hover:bg-white/25 cursor-default transition-colors"
             >
               {btn.text ?? btn.title ?? 'Button'}
             </div>
@@ -122,23 +138,105 @@ function applyBindings(text: string, bindings?: Record<string, string>): string 
 }
 
 function MediaContent({ content, type }: { content: any; type: string }) {
-  const icons: Record<string, string> = {
-    image:    'solar:gallery-bold-duotone',
-    video:    'solar:play-circle-bold-duotone',
-    audio:    'solar:microphone-3-bold-duotone',
-    document: 'solar:file-text-bold-duotone',
-    sticker:  'solar:emoji-funny-square-bold-duotone',
-  };
+  const mediaUrl = content?.media_url || (content?.meta_media_id ? `/api/media/${content.meta_media_id}` : null);
+
+  if (type === 'image') {
+    return (
+      <div className="space-y-1.5 max-w-xs">
+        {mediaUrl ? (
+          <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl group relative">
+            <img
+              src={mediaUrl}
+              alt={content?.caption || 'WhatsApp Image'}
+              className="max-h-72 w-full object-cover rounded-xl transition-transform duration-200 group-hover:scale-105"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Icon icon="solar:magnifer-zoom-in-bold" className="w-6 h-6 text-white drop-shadow" />
+            </div>
+          </a>
+        ) : (
+          <div className="h-28 w-52 rounded-xl bg-white/10 dark:bg-slate-700/50 flex flex-col items-center justify-center gap-1">
+            <Icon icon="solar:gallery-bold-duotone" className="w-8 h-8 opacity-50" />
+            <span className="text-[10px] opacity-60">Image</span>
+          </div>
+        )}
+        {content?.caption && (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{content.caption}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'audio') {
+    return (
+      <div className="space-y-1 py-1">
+        {mediaUrl ? (
+          <audio controls src={mediaUrl} className="max-w-[240px] h-10" />
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 dark:bg-slate-700/50">
+            <Icon icon="solar:microphone-3-bold-duotone" className="w-5 h-5 text-cyan-400" />
+            <span className="text-xs">Voice Note</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'video') {
+    return (
+      <div className="space-y-1.5 max-w-xs">
+        {mediaUrl ? (
+          <video controls src={mediaUrl} className="max-h-72 w-full rounded-xl" />
+        ) : (
+          <div className="h-28 w-52 rounded-xl bg-white/10 dark:bg-slate-700/50 flex flex-col items-center justify-center gap-1">
+            <Icon icon="solar:play-circle-bold-duotone" className="w-8 h-8 opacity-50" />
+            <span className="text-[10px] opacity-60">Video</span>
+          </div>
+        )}
+        {content?.caption && (
+          <p className="text-sm leading-relaxed">{content.caption}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'document') {
+    return (
+      <div className="space-y-1">
+        <a
+          href={mediaUrl || '#'}
+          target={mediaUrl ? '_blank' : undefined}
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 bg-white/10 dark:bg-slate-700/50 hover:bg-white/20 transition-colors rounded-xl px-3.5 py-2.5 max-w-xs"
+        >
+          <div className="w-9 h-9 rounded-lg bg-red-500/20 grid place-items-center shrink-0">
+            <Icon icon="solar:file-text-bold-duotone" className="w-5 h-5 text-red-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold truncate">{content?.filename || 'Document'}</p>
+            <p className="text-[10px] opacity-60 uppercase">{content?.mime_type?.split('/')[1] || 'FILE'}</p>
+          </div>
+          {mediaUrl && (
+            <Icon icon="solar:download-minimalistic-bold" className="w-4 h-4 opacity-70 shrink-0" />
+          )}
+        </a>
+        {content?.caption && (
+          <p className="text-sm leading-relaxed">{content.caption}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Sticker or Fallback
   return (
     <div className="space-y-1">
-      <div className="h-24 w-48 rounded-xl bg-white/10 dark:bg-slate-700/50 flex items-center justify-center">
-        <Icon icon={icons[type] ?? 'solar:file-bold-duotone'} className="w-8 h-8 opacity-50" />
-      </div>
-      {content?.caption && (
-        <p className="text-sm leading-relaxed">{content.caption}</p>
-      )}
-      {type === 'document' && content?.filename && (
-        <p className="text-xs opacity-70 font-mono">{content.filename}</p>
+      {mediaUrl ? (
+        <img src={mediaUrl} alt="Sticker" className="w-28 h-28 object-contain" />
+      ) : (
+        <div className="h-20 w-20 rounded-xl bg-white/10 dark:bg-slate-700/50 grid place-items-center">
+          <Icon icon="solar:emoji-funny-square-bold-duotone" className="w-8 h-8 opacity-50" />
+        </div>
       )}
     </div>
   );

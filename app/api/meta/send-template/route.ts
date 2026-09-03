@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
+import { resolveUnifiedContactAndConversation } from '@/lib/contacts/contact-resolver';
 
 const GRAPH_API_BASE = `https://graph.facebook.com/${PLATFORM_CONFIG.metaApiVersion}`;
 
@@ -152,65 +153,79 @@ export async function POST(request: Request) {
       try {
         const tenantUid = phoneLine.tenant_uid;
 
-        // 1. Create the contact if the consent gate did not find one.
-        if (!contactUid) {
-          const { data: newContact, error: contactErr } = await supabase
-            .from('contacts')
-            .insert({
-              tenant_uid: tenantUid,
-              wa_phone: e164Phone,
-              name: e164Phone,
-            })
-            .select('contact_uid')
-            .single();
+        // 1 & 2. Resolve or create unified Contact & Conversation (prevents split chats)
+        const { contact, conversation: conv } = await resolveUnifiedContactAndConversation(supabase, {
+          tenantUid,
+          phoneLineUid: phoneLine.phone_line_uid,
+          rawPhone: recipient_phone,
+          contactName: recipient_phone,
+          isInbound: false,
+        });
 
-          if (contactErr) throw contactErr;
-          contactUid = newContact?.contact_uid ?? null;
+        // 3. Look up template definition to interpolate rich message preview (Issue 1d)
+        let templateDef: any = null;
+        try {
+          const { data: tmpl } = await supabase
+            .from('wa_templates')
+            .select('*')
+            .eq('name', template_name)
+            .limit(1)
+            .maybeSingle();
+          templateDef = tmpl;
+        } catch (tErr) {
+          console.warn('[send-template] Template definition lookup failed:', tErr);
         }
 
-        if (!contactUid) throw new Error('Could not resolve or create contact');
+        const paramComponents: any[] = body.components || [];
+        const bodyParamObj = paramComponents.find((c: any) => c.type === 'body' || c.type === 'BODY');
+        const bodyParams: any[] = bodyParamObj?.parameters || [];
 
-        // 2. Find or create Conversation
-        let { data: conv } = await supabase
-          .from('conversations')
-          .select('conversation_uid')
-          .eq('tenant_uid', tenantUid)
-          .eq('contact_uid', contactUid)
-          .eq('phone_line_uid', phoneLine.phone_line_uid)
-          .maybeSingle();
-
-        if (!conv) {
-          const { data: newConv, error: convErr } = await supabase
-            .from('conversations')
-            .insert({
-              tenant_uid: tenantUid,
-              contact_uid: contactUid,
-              phone_line_uid: phoneLine.phone_line_uid,
-              lifecycle_status: 'open',
-              bot_control: 'agent',
-            })
-            .select('conversation_uid')
-            .single();
-
-          if (convErr) throw convErr;
-          conv = newConv;
+        let tmplComponents = templateDef?.components || [];
+        if (typeof tmplComponents === 'string') {
+          try { tmplComponents = JSON.parse(tmplComponents); } catch {}
         }
 
-        if (!conv) throw new Error('Could not resolve or create conversation');
+        let resolvedBodyText = '';
+        const tmplBody = (tmplComponents || []).find((c: any) => c.type === 'BODY' || c.type === 'body');
+        if (tmplBody?.text) {
+          resolvedBodyText = tmplBody.text;
+          bodyParams.forEach((param: any, idx: number) => {
+            const placeholder = `{{${idx + 1}}}`;
+            const val = param.text || param.currency?.code || param.date_time?.fallback_value || '';
+            resolvedBodyText = resolvedBodyText.split(placeholder).join(val);
+          });
+        } else if (bodyParams.length > 0) {
+          resolvedBodyText = bodyParams.map((p: any) => p.text).filter(Boolean).join(' ');
+        }
 
-        // 3. Insert Message row (trigger handles conversation denormalization)
+        // Format rich components for MessageBubble
+        const richComponents = tmplComponents.length > 0 ? tmplComponents.map((comp: any) => {
+          if (comp.type === 'BODY' || comp.type === 'body') {
+            return { ...comp, text: resolvedBodyText || comp.text };
+          }
+          return comp;
+        }) : (body.components || []);
+
+        const contentJson: Record<string, any> = {
+          template_name: template_name,
+          language: language || 'en_US',
+          body: {
+            text: resolvedBodyText || template_name,
+          },
+          components: richComponents,
+          resolved_body: resolvedBodyText,
+          raw_params: body.components || [],
+        };
+
+        // 4. Insert Message row (trigger handles conversation denormalization)
         const { error: msgErr } = await supabase.from('messages').insert({
           tenant_uid: tenantUid,
           conversation_uid: conv.conversation_uid,
           phone_line_uid: phoneLine.phone_line_uid,
-          contact_uid: contactUid,
+          contact_uid: contact.contact_uid,
           direction: 'outbound',
           message_type: 'template',
-          content: {
-            template_name: template_name,
-            language: language || 'en_US',
-            components: body.components || [],
-          },
+          content: contentJson,
           source_type: 'api',
           wa_message_id: metaMessageId,
           status: 'sent',

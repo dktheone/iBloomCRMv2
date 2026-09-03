@@ -48,26 +48,54 @@ const STATUS_CONFIG = {
 
 // ── Window banner ──────────────────────────────────────────────────────────────
 function WindowBanner({ open, mins }: { open: boolean; mins: number }) {
-  if (open && mins > 60) return null; // plenty of time — hide
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  const timeStr = hours > 0 ? `${hours}h ${remainingMins}m` : `${remainingMins}m`;
 
-  if (!open) {
+  if (open) {
+    const isUrgent = mins <= 180; // less than 3 hours
+
     return (
-      <div className="mx-4 mb-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/40 rounded-2xl px-4 py-2.5">
-        <Icon icon="solar:lock-keyhole-bold-duotone" className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-        <p className="text-xs text-amber-800 dark:text-amber-300">
-          <span className="font-bold">24h window closed.</span> You can only send pre-approved templates until the customer replies.
-        </p>
+      <div
+        className={`mx-4 mb-2 flex items-center justify-between rounded-xl px-3.5 py-2 border transition-all ${
+          isUrgent
+            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/50'
+            : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/40'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          {isUrgent ? (
+            <Icon icon="solar:clock-circle-bold-duotone" className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse shrink-0" />
+          ) : (
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          )}
+          <p className={`text-xs ${isUrgent ? 'text-amber-900 dark:text-amber-200' : 'text-emerald-900 dark:text-emerald-200'}`}>
+            <span className="font-semibold">Customer Care Window Active:</span>{' '}
+            <span className="font-bold">{timeStr} remaining</span>
+          </p>
+        </div>
+        <span className={`text-[11px] hidden sm:inline ${isUrgent ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          {isUrgent ? 'Expiring soon — send a reply' : 'Freeform text & media allowed'}
+        </span>
       </div>
     );
   }
 
-  // < 1h remaining
+  // Window closed
   return (
-    <div className="mx-4 mb-3 flex items-center gap-2 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-700/40 rounded-2xl px-4 py-2.5">
-      <Icon icon="solar:clock-circle-bold-duotone" className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0 animate-pulse" />
-      <p className="text-xs text-orange-800 dark:text-orange-300">
-        <span className="font-bold">{mins}m left</span> in the 24h messaging window.
-      </p>
+    <div className="mx-4 mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3.5 py-2.5">
+      <div className="flex items-center gap-2">
+        <Icon icon="solar:lock-keyhole-bold-duotone" className="w-4 h-4 text-amber-500 shrink-0" />
+        <p className="text-xs text-slate-700 dark:text-slate-300">
+          <span className="font-semibold text-slate-900 dark:text-white">24h Window Closed.</span> Freeform messaging is locked by Meta. Send an approved template to re-open.
+        </p>
+      </div>
+      <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 italic">
+        Use template icon below
+      </div>
     </div>
   );
 }
