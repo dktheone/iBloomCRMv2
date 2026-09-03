@@ -9,6 +9,8 @@ import { routeMetaWebhook } from '@/lib/webhooks/providers/meta/router';
 import { WebhookProvider } from '@/lib/webhooks/core/types';
 import { PLATFORM_CONFIG } from '@/config/platform.config';
 
+import { logWebhookToFile } from '@/lib/webhooks/core/file-logger';
+
 interface RouteParams {
   params: Promise<{ provider: string }>;
 }
@@ -18,23 +20,48 @@ interface RouteParams {
  */
 export async function GET(req: NextRequest, { params }: RouteParams) {
   const { provider } = await params;
+  const providerKey = provider.toLowerCase() as WebhookProvider;
   const searchParams = req.nextUrl.searchParams;
 
+  // Log incoming GET handshake to local JSON file
+  logWebhookToFile({
+    provider: providerKey,
+    sub_provider: 'whatsapp',
+    event_type: 'handshake_get',
+    headers: Object.fromEntries(req.headers.entries()),
+    query_params: Object.fromEntries(searchParams.entries()),
+    method: 'GET',
+    payload: {
+      mode: searchParams.get('hub.mode'),
+      challenge: searchParams.get('hub.challenge'),
+      verify_token: searchParams.get('hub.verify_token'),
+    },
+    status: 'received',
+  });
+
   // 1. Meta Handshake (hub.mode=subscribe, hub.verify_token, hub.challenge)
-  if (provider === 'meta') {
+  if (providerKey === 'meta') {
     const mode = searchParams.get('hub.mode');
     const token = searchParams.get('hub.verify_token');
     const challenge = searchParams.get('hub.challenge');
 
     if (mode === 'subscribe') {
-      const supabase = createAdminClient();
-      const { data: config } = await supabase
-        .from('provider_webhook_configs')
-        .select('verify_token, is_enabled')
-        .eq('provider', 'meta')
-        .maybeSingle();
+      let expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 'ibloom_webhook_secret_verify_2026';
 
-      const expectedToken = config?.verify_token || process.env.META_WEBHOOK_VERIFY_TOKEN || 'ibloom_webhook_secret_verify_2026';
+      try {
+        const supabase = createAdminClient();
+        const { data: config } = await supabase
+          .from('provider_webhook_configs')
+          .select('verify_token, is_enabled')
+          .eq('provider', 'meta')
+          .maybeSingle();
+
+        if (config?.verify_token) {
+          expectedToken = config.verify_token;
+        }
+      } catch (err) {
+        console.warn('[Webhook Handshake] Supabase query failed, falling back to env verify token:', err);
+      }
 
       if (verifyMetaHandshakeToken(token, expectedToken)) {
         console.log('[Meta Webhook GET] Verification handshake SUCCESS!');
@@ -52,7 +79,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 }
 
 /**
- * POST — Incoming Webhook Payload Receiver (100% Unrestricted First-Pass Logging)
+ * POST — Incoming Webhook Payload Receiver (Filesystem JSON Logging + Non-blocking DB)
  */
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const { provider } = await params;
@@ -85,27 +112,56 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
   const subProvider = providerKey === 'meta' ? 'whatsapp' : 'generic';
 
-  // STEP 0.3: UNRESTRICTED FIRST-PASS LOGGING — GUARANTEED INSERTION BEFORE ANY VALIDATION
-  const loggedRecord = await logWebhookEvent({
+  // STEP 0.3: PRIMARY LOGGING — WRITE DIRECTLY TO LOCAL JSON FILE FIRST
+  const fileLog = logWebhookToFile({
     provider: providerKey,
     sub_provider: subProvider,
     event_type: eventType,
     external_event_id: externalEventId,
+    headers: Object.fromEntries(req.headers.entries()),
+    method: 'POST',
     payload,
+    raw_body: rawBody,
     status: 'received',
   });
 
-  const supabase = createAdminClient();
+  console.log(`[Webhook Inbound Captured] ID: ${fileLog.event_uid} | Event: ${eventType} | Provider: ${providerKey}`);
 
-  // 1. Fetch provider configuration from DB
-  const { data: config } = await supabase
-    .from('provider_webhook_configs')
-    .select('is_enabled, secret_token, verify_token')
-    .eq('provider', providerKey)
-    .maybeSingle();
+  // Non-blocking optional Supabase DB write
+  let loggedRecord: any = null;
+  try {
+    loggedRecord = await logWebhookEvent({
+      provider: providerKey,
+      sub_provider: subProvider,
+      event_type: eventType,
+      external_event_id: externalEventId,
+      payload,
+      status: 'received',
+    });
+  } catch (dbErr) {
+    console.warn('[Webhook Supabase DB Skipped/Failed]', dbErr);
+  }
 
-  // If provider is explicitly disabled in Superadmin Control Center, update log & gate
-  if (config && !config.is_enabled) {
+  // 1. Check provider configuration from DB (safe fallback if DB unreachable)
+  let isEnabled = true;
+  let secretTokenFromDb = '';
+  try {
+    const supabase = createAdminClient();
+    const { data: config } = await supabase
+      .from('provider_webhook_configs')
+      .select('is_enabled, secret_token, verify_token')
+      .eq('provider', providerKey)
+      .maybeSingle();
+
+    if (config) {
+      isEnabled = config.is_enabled;
+      secretTokenFromDb = config.secret_token;
+    }
+  } catch (err) {
+    console.warn('[Webhook Config Fetch Failed] Defaulting to enabled:', err);
+  }
+
+  if (!isEnabled) {
     if (loggedRecord?.event_uid) {
       await updateWebhookEventStatus(
         loggedRecord.event_uid,
@@ -123,8 +179,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     PLATFORM_CONFIG.metaAppSecret ||
     '';
 
-  if (config?.secret_token && config.secret_token !== 'meta_app_secret_placeholder') {
-    appSecret = config.secret_token;
+  if (secretTokenFromDb && secretTokenFromDb !== 'meta_app_secret_placeholder') {
+    appSecret = secretTokenFromDb;
   }
 
   if (providerKey === 'meta' && appSecret) {
@@ -132,30 +188,37 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     if (!isValid) {
       console.warn('[Meta Webhook POST] HMAC Signature verification failed!');
       if (loggedRecord?.event_uid) {
-        await updateWebhookEventStatus(
-          loggedRecord.event_uid,
-          'dead_letter',
-          'X-Hub-Signature-256 HMAC verification failed'
-        );
+        try {
+          await updateWebhookEventStatus(
+            loggedRecord.event_uid,
+            'dead_letter',
+            'X-Hub-Signature-256 HMAC verification failed'
+          );
+        } catch {}
       }
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      // Return 401 but request was already successfully captured to local JSON file!
+      return NextResponse.json({ error: 'Invalid signature', logged_file_id: fileLog.event_uid }, { status: 401 });
     }
   }
 
   // 3. Asynchronous Processing Execution & Status Update
   const executionPromise = (async () => {
     if (providerKey === 'meta') {
-      const results = await routeMetaWebhook(payload);
-      const firstRes = results[0];
+      try {
+        const results = await routeMetaWebhook(payload);
+        const firstRes = results[0];
 
-      if (loggedRecord?.event_uid) {
-        await updateWebhookEventStatus(
-          loggedRecord.event_uid,
-          firstRes?.status || 'processed',
-          firstRes?.error,
-          firstRes?.tenant_uid,
-          firstRes?.phone_line_uid
-        );
+        if (loggedRecord?.event_uid) {
+          await updateWebhookEventStatus(
+            loggedRecord.event_uid,
+            firstRes?.status || 'processed',
+            firstRes?.error,
+            firstRes?.tenant_uid,
+            firstRes?.phone_line_uid
+          );
+        }
+      } catch (procErr) {
+        console.error('[Webhook Async Routing Error]', procErr);
       }
     }
   })();
@@ -170,5 +233,5 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error('[Webhook Execution Error]', e);
   }
 
-  return NextResponse.json({ status: 'ok', received: true }, { status: 200 });
+  return NextResponse.json({ status: 'ok', received: true, event_uid: fileLog.event_uid }, { status: 200 });
 }
